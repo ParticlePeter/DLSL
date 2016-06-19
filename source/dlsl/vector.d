@@ -1,5 +1,5 @@
 /**
-math.vector
+dlsl.vector
 
 
 Authors: Peter Particle ( based on gl3n by David Herberth )
@@ -14,6 +14,40 @@ module dlsl.vector;
 import std.math : sqrt;
 import std.format : sformat;
 import std.traits : isFloatingPoint, isArray;
+
+
+/// Pre-defined vector types
+alias Vector!( float, 2 ) vec2; 
+alias Vector!( float, 3 ) vec3;
+alias Vector!( float, 4 ) vec4;
+
+alias Vector!( double, 2 ) dvec2;
+alias Vector!( double, 3 ) dvec3;
+alias Vector!( double, 4 ) dvec4;
+
+alias Vector!( int, 2 ) ivec2;
+alias Vector!( int, 3 ) ivec3;
+alias Vector!( int, 4 ) ivec4;
+
+alias Vector!( uint, 2 ) uvec2;
+alias Vector!( uint, 3 ) uvec3;
+alias Vector!( uint, 4 ) uvec4;
+
+alias Vector!( byte, 2 ) ivec2b;
+alias Vector!( byte, 3 ) ivec3b;
+alias Vector!( byte, 4 ) ivec4b;
+
+alias Vector!( ubyte, 2 ) uvec2b;
+alias Vector!( ubyte, 3 ) uvec3b;
+alias Vector!( ubyte, 4 ) uvec4b;
+
+alias Vector!( short, 2 ) ivec2s;
+alias Vector!( short, 3 ) ivec3s;
+alias Vector!( short, 4 ) ivec4s;
+
+alias Vector!( ushort, 2 ) uvec2s;
+alias Vector!( ushort, 3 ) uvec3s;
+alias Vector!( ushort, 4 ) uvec4s;
 
 
 /// If T is a vector, this evaluates to true, otherwise false
@@ -31,11 +65,10 @@ private void isVectorImpl( T, int dim )( Vector!( T, dim ) vec )  {}
 /// alias Vector!(real, 2) vec2r;
 /// ---
 struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 ))  {
+	type[ dim ] data;							/// Holds all coordinates, length conforms dimension
+	alias data this;							/// The Vector can be treated as an array
+	alias dimension = dim;				/// Holds the dimension of the vector
 	alias type valueType;						/// Holds the internal type of the vector
-	static const ubyte dimension = dim;	/// Holds the dimension of the vector
-
-	valueType[ dimension ] data;				/// Holds all coordinates, length conforms dimension
-	alias data this;								/// The Vector can be treated as an array
 
 
 	// Unittest Construction via aliased this static array
@@ -342,9 +375,9 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 ))  {
 			/// skip vec2.xy, vec3.xyz, vec4.xyzw which all return identity
 			result ~= "alias " ~ aliColor~ fill[ term - 1 ] ~ " = " ~ property ~ fill[ term - 1 ] ~ "; ";
 			result ~= "alias " ~ aliTexST~ fill[ term - 1 ] ~ " = " ~ property ~ fill[ term - 1 ] ~ "; ";
-			if			( dimension == 2 && property == "xy"   )  result ~= returnType ~ property ~ "()  const  {  return this;  }\n";
-			else	if ( dimension == 3 && property == "xyz"  )  result ~= returnType ~ property ~ "()  const  {  return this;  }\n";
-			else	if ( dimension == 4 && property == "xyzw" )  result ~= returnType ~ property ~ "()  const  {  return this;  }\n";
+			if		( dimension == 2 && property == "xy"   )  result ~= returnType ~ property ~ "()  const  {  return this;  }\n";
+			else  if( dimension == 3 && property == "xyz"  )  result ~= returnType ~ property ~ "()  const  {  return this;  }\n";
+			else  if( dimension == 4 && property == "xyzw" )  result ~= returnType ~ property ~ "()  const  {  return this;  }\n";
 			else { 
 				result ~= returnType ~ property ~ returnString ~ "\n";
 				if ( term > 1 )  result ~= getSwizz( property, aliColor, aliTexST, returnData ~ ", ", term - 1 );
@@ -657,8 +690,10 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 ))  {
 }
 
 
+@safe pure nothrow:
+
 /// Vector dot product
-@safe pure nothrow genType.valueType dot( genType )( in genType a, in genType b ) if ( isVector!genType )  {
+genType.valueType dot( genType )( in genType a, in genType b ) if ( isVector!genType )  {
 	static if ( !isFloatingPoint!( genType.valueType ) && genType.valueType.sizeof < 32 )  {
 		genType.valueType result = cast( genType.valueType )( a.data[ 0 ] * b.data[ 0 ] + a.data[ 1 ] * b.data[ 1 ] );
 		static if ( genType.dimension >= 3 ) { result += cast( genType.valueType )( a.data[ 2 ] * b.data[ 2 ] ); }
@@ -674,7 +709,7 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 ))  {
 
 
 /// Vector cross product
-@safe pure nothrow genType cross( genType )( in genType a, in genType b ) if ( isVector!genType && ( genType.dimension == 3 ))  {
+genType cross( genType )( in genType a, in genType b ) if ( isVector!genType && ( genType.dimension == 3 ))  {
    return genType( a.y * b.z - b.y * a.z,
 				   a.z * b.x - b.z * a.x,
 				   a.x * b.y - b.x * a.y );
@@ -682,14 +717,14 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 ))  {
 
 
 /// Vector length floating point valueType
-@safe pure nothrow auto length( genType )( in genType v ) if ( isVector!genType )  {
+auto length( genType )( in genType v ) if ( isVector!genType )  {
 	static if ( isFloatingPoint!( genType.valueType ))	return sqrt( dot( v, v ));
-	else																return sqrt( cast( real )dot( v, v )); 
+	else												return sqrt( cast( real )dot( v, v )); 
 }
 
 
 /// Vector normalize
-@safe pure nothrow genType normalize( genType )( in genType v ) if ( isVector!genType )  {
+genType normalize( genType )( in genType v ) if ( isVector!genType )  {
 	auto l = v.length;
 	if ( l == 0 )  return v;
 	auto invLength = 1.0 / l;
@@ -703,27 +738,27 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 ))  {
 
 
 /// Distance between two vectors
-@safe pure nothrow genType.valueType distance( genType )( const genType a, const genType b ) if ( isVector!genType ) {
+genType.valueType distance( genType )( const genType a, const genType b ) if ( isVector!genType ) {
 	return length( a - b );
 }
 
 
 /// Flip the Vector N based on an incident vector I and a reference Vector Nref 
-@safe pure nothrow genType faceforward( genType )( in genType N, in genType I, in genType Nref ) if ( isVector!genType )  {
+genType faceforward( genType )( in genType N, in genType I, in genType Nref ) if ( isVector!genType )  {
 	return  dot( Nref, I ) < 0 ? N : -N;
 }
 
 
 /// Reflect the Vector I on a plane with normal N 
 /// The normal N must already to be normalized
-@safe pure nothrow genType reflect( genType )( in genType I, in genType N ) if ( isVector!genType )  {
+genType reflect( genType )( in genType I, in genType N ) if ( isVector!genType )  {
 	return I - 2 * dot( N, I ) * N;
 }
 
 
 /// For the incident vector I and surface normal N, and the ratio of indices of refraction eta, return the refraction vector
 /// The input parameters for the incident vector I and the surface normal N must already be normalized
-@safe pure nothrow genType.valueType refract( genType )( genType I, genType N, genType.valueType eta ) if ( isVector!genType )  {
+genType.valueType refract( genType )( genType I, genType N, genType.valueType eta ) if ( isVector!genType )  {
 	auto dotNI = dot( N, I );
 	auto k = 1.0 - eta * eta * ( 1.0 - dotNI * dotNI );
 	if ( k < 0.0 ) return 0.0;
@@ -771,38 +806,82 @@ unittest  {
 	assert( distance( vec2( 0.0f, 0.0f ), vec2( 0.0f, 10.0f )) == 10.0 );        
 }
 
-/// Pre-defined vector types
-alias Vector!( float, 2 ) vec2; 
-alias Vector!( float, 3 ) vec3;
-alias Vector!( float, 4 ) vec4;
 
-alias Vector!( double, 2 ) dvec2;
-alias Vector!( double, 3 ) dvec3;
-alias Vector!( double, 4 ) dvec4;
+/// query if any entry is nan
+alias isNaN = isnan;	// as std.math.isNaN
+bool isnan( genType )( const ref genType vec ) if( isVector!genType && isFloatingPoint!( genType.valueType )) {
+	import std.math : isNaN; 
+	foreach( const ref val; vec )
+		if( std.math.isNaN( val ))
+			return true;
+	return false;
+}
 
-alias Vector!( int, 2 ) ivec2;
-alias Vector!( int, 3 ) ivec3;
-alias Vector!( int, 4 ) ivec4;
 
-alias Vector!( uint, 2 ) uvec2;
-alias Vector!( uint, 3 ) uvec3;
-alias Vector!( uint, 4 ) uvec4;
+/// query if any entry is inf
+alias isInfinity = isinf;	// as std.math.isInfinity
+bool isinf( genType )( const ref genType vec ) if( isVector!genType && isFloatingPoint!( genType.valueType )) {
+	import std.math : isInfinity;
+	foreach( const ref val; vec )
+		if( std.math.isInfinity( val )) 
+			return true;
+	return false;
+}
 
-alias Vector!( byte, 2 ) ivec2b;
-alias Vector!( byte, 3 ) ivec3b;
-alias Vector!( byte, 4 ) ivec4b;
 
-alias Vector!( ubyte, 2 ) uvec2b;
-alias Vector!( ubyte, 3 ) uvec3b;
-alias Vector!( ubyte, 4 ) uvec4b;
+/// query if all entries are not nan and not inf
+alias isValid = isvalid;	// consistency
+bool isvalid( genType )( const ref genType vec ) if( isVector!genType && isFloatingPoint!( genType.valueType )) {
+	return !( vec.isinf || vec.isnan );
+}
 
-alias Vector!( short, 2 ) ivec2s;
-alias Vector!( short, 3 ) ivec3s;
-alias Vector!( short, 4 ) ivec4s;
 
-alias Vector!( ushort, 2 ) uvec2s;
-alias Vector!( ushort, 3 ) uvec3s;
-alias Vector!( ushort, 4 ) uvec4s;
+unittest {		/// Matrix.isvalid
+/*
+	mat2 m2 = mat2( 1.0f, 1.0f, vec2( 2.0f, 2.0f ));
+	assert( m2.data == [[ 1.0f, 1.0f ], [ 2.0f, 2.0f ]] );
+	m2.clear( 3.0f );
+	assert( m2.data == [[ 3.0f, 3.0f ], [ 3.0f, 3.0f ]] );
+	assert( m2.isvalid );
+	m2.clear( float.nan );
+	assert( !m2.isvalid );
+	m2.clear( float.infinity );
+	assert( !m2.isvalid );
+	m2.clear( 0.0f );
+	assert( m2.isvalid );
+
+	mat3 m3 = mat3( 1.0f );
+	assert( m3.data == [[ 1.0f, 0.0f, 0.0f ],
+						[ 0.0f, 1.0f, 0.0f ],
+						[ 0.0f, 0.0f, 1.0f ]] );
+
+	mat4 m4 = mat4( vec4( 	1.0f, 1.0f, 1.0f, 1.0f ),
+							2.0f, 2.0f, 2.0f, 2.0f,
+							3.0f, 3.0f, 3.0f, 3.0f,
+						 vec4( 4.0f, 4.0f, 4.0f, 4.0f ));
+	assert( m4.data == [[ 1.0f, 1.0f, 1.0f, 1.0f ],
+						[ 2.0f, 2.0f, 2.0f, 2.0f ],
+						[ 3.0f, 3.0f, 3.0f, 3.0f ],
+						[ 4.0f, 4.0f, 4.0f, 4.0f ]] );
+	assert( mat3( m4 ).data == [[ 1.0f, 1.0f, 1.0f ],
+								[ 2.0f, 2.0f, 2.0f ],
+								[ 3.0f, 3.0f, 3.0f ]] );
+	assert( mat2( mat3( m4 )).data == [[ 1.0f, 1.0f ],
+													[ 2.0f, 2.0f ] ] );
+	assert( mat2( m4 ).data == mat2( mat3( m4 )).data );
+	assert( mat4( mat3( m4 )).data ==  [[ 1.0f, 1.0f, 1.0f, 0.0f ],
+										[ 2.0f, 2.0f, 2.0f, 0.0f ],
+										[ 3.0f, 3.0f, 3.0f, 0.0f ],
+										[ 0.0f, 0.0f, 0.0f, 1.0f ]] );
+
+	Matrix!( float, 2, 3 ) mt1 = Matrix!( float, 2, 3 )( 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f );
+	Matrix!( float, 3, 2 ) mt2 = Matrix!( float, 3, 2 )( 6.0f, - 1.0f, 3.0f, 2.0f, 0.0f, - 3.0f );
+
+	assert( mt1.data == [[ 1.0f, 2.0f, 3.0f ], [ 4.0f, 5.0f, 6.0f ]] );
+	assert( mt2.data == [[ 6.0f, - 1.0f ], [ 3.0f, 2.0f ], [ 0.0f, - 3.0f ]] );
+*/
+}
+
 
 
 
