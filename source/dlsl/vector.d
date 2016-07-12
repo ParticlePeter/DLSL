@@ -65,10 +65,10 @@ private void isVectorImpl( T, int dim )( Vector!( T, dim ) vec )  {}
 /// alias Vector!(real, 2) vec2r;
 /// ---
 struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 ))  {
-	type[ dim ] data;							/// Holds all coordinates, length conforms dimension
-	alias data this;							/// The Vector can be treated as an array
+	type[ dim ] data;					/// Holds all coordinates, length conforms dimension
+	alias data this;					/// The Vector can be treated as an array
 	alias dimension = dim;				/// Holds the dimension of the vector
-	alias type valueType;						/// Holds the internal type of the vector
+	alias type valueType;				/// Holds the internal type of the vector
 
 
 	// Unittest Construction via aliased this static array
