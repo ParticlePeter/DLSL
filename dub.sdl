@@ -1,0 +1,8 @@
+name			"dlsl"
+targetName		"dlsl"
+targetType		"sourceLibrary"
+description		"glsl math library based on gl3n"
+homepage		""
+copyright		"Copyright (c) 2016 David Herberth Peter Particle"
+authors			"David Herberth" "Peter Particle"
+license			"MIT"
