@@ -204,10 +204,10 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 
 
 	/// Construct a Matrix from another Matrix
-	this( T )( T mat ) if( isMatrix!T && ( T.rows < rows ) && ( T.cols < cols )) {
-		this( 1 );
-		auto Cols = cols < T.cols ? cols : T.cols;
-		auto Rows = rows < T.rows ? rows : T.rows;
+	this( T )( T mat ) if( isMatrix!T ) {
+		this( 1 );	// Could be optimized with not initializing and setting missing values within static if range checks
+		//alias Cols = cols < T.cols ? cols : T.cols;
+		//alias Rows = rows < T.rows ? rows : T.rows;
 		foreach( c; 0 .. cols < T.cols ? cols : T.cols ) {
 			foreach( r; 0 .. rows < T.rows ? rows : T.rows ) {
 				data[ c ][ r ] = mat.data[ c ][ r ];
@@ -329,7 +329,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 			static Matrix translation( valueType x ) {
 				Matrix result = Matrix.identity;
 				result.data[ 1 ][ 0 ] = x;
-				return result;            
+				return result;
 			}
 
 			/// translate an existing matrix
@@ -340,34 +340,53 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 		}
 
 		else static if( cols == 3 ) {		// homogeneous 2D translations
-			/// static construction of a translation matrix
-			static Matrix translation( valueType x, valueType y ) {
+			/// static construction of a translation matrix from an array/vector
+			static Matrix translation( valueType[ 2 ] vec )  {
 				Matrix result = Matrix.identity;
-				result.data[ 2 ][ 0 ] = x;
-				result.data[ 2 ][ 1 ] = y;
-				return result;            
+				result.data[ 2 ][ 0..2 ] = vec;
+				return result;
 			}
 
-			/// translate an existing matrix
+			/// static construction of a translation matrix from two coordinates
+			static Matrix translation( valueType x, valueType y )  {
+				return translation( [ x, y ] );
+			}
+
+			/// translate an existing matrix with an array/vector
+			Matrix translate( valueType[ 2 ] vec ) {
+				this = Matrix.translation( vec ) * this;
+				return this;
+			}
+
+			/// translate an existing matrix with two scalars
 			Matrix translate( valueType x, valueType y ) {
-				this = Matrix.translation( x, y ) * this;
+				this = Matrix.translation( [ x, y ] ) * this;
 				return this;
 			}
 		}
 
 		else static if( cols == 4 ) {		// homogeneous 3D translations
-			/// static construction of a translation matrix
-			static Matrix translation( valueType x, valueType y, valueType z ) {
+			/// static construction of a translation matrix from an array/vector
+			static Matrix translation( valueType[ 3 ] vec )  {
 				Matrix result = Matrix.identity;
-				result.data[ 3 ][ 0 ] = x;
-				result.data[ 3 ][ 1 ] = y;
-				result.data[ 3 ][ 2 ] = z;
-				return result;            
+				result.data[ 3 ][ 0..3 ] = vec;
+				return result;
 			}
 
-			/// translate an existing matrix
+			/// static construction of a translation matrix from three coordinates
+			static Matrix translation( valueType x, valueType y, valueType z )  {
+				return translation( [ x, y, z ] );
+			}
+
+			/// translate an existing matrix with a vector
+			Matrix translate( valueType[ 3 ] vec ) {
+				this = Matrix.translation( vec ) * this;
+				return this;
+			}
+
+			/// translate an existing matrix with three scalars
 			Matrix translate( valueType x, valueType y, valueType z ) {
-				this = Matrix.translation( x, y, z ) * this;
+				this = Matrix.translation( [ x, y, z ] ) * this;
 				return this;
 			}
 
@@ -607,34 +626,56 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 		}
 
 		static if( cols == 2 || cols == 3 ) {		// non- and homogeneous 2D scaling
-			/// static construction of a scaling matrix
-			static Matrix scaling( valueType x, valueType y ) {
+			/// static construction of a scaling matrix from an array/vector
+			static Matrix scaling( valueType[ 2 ] vec ) {
 				Matrix result = Matrix.identity;
-				result.data[ 0 ][ 0 ] = x;
-				result.data[ 1 ][ 1 ] = y;
+				result.data[ 0 ][ 0 ] = vec[ 0 ];
+				result.data[ 1 ][ 1 ] = vec[ 1 ];
 				return result;
 			}
 
-			/// scale an existing matrix 
+			/// static construction of a scaling matrix from two scalars
+			static Matrix scaling( valueType x, valueType y ) {
+				return scaling( [ x, y ] );
+			}
+
+			/// scale an existing matrix with an array/vector 
+			Matrix scale( valueType[ 2 ] vec ) {
+				this = Matrix.scaling( vec ) * this;
+				return this;
+			}
+
+			/// scale an existing matrix with two scalars
 			Matrix scale( valueType x, valueType y ) {
-				this = Matrix.scaling( x, y ) * this;
+				this = Matrix.scaling( [ x, y ] ) * this;
 				return this;
 			}
 		}
 
 		else static if( cols >= 3 ) {
-			/// static construction of a scaling matrix
-			static Matrix scaling( valueType x, valueType y, valueType z ) {
+			/// static construction of a scaling matrix from an array/vector
+			static Matrix scaling( valueType[ 3 ] vec ) {
 				Matrix result = Matrix.identity;
-				result.data[ 0 ][ 0 ] = x;
-				result.data[ 1 ][ 1 ] = y;
-				result.data[ 2 ][ 2 ] = z;
+				result.data[ 0 ][ 0 ] = vec[ 0 ];
+				result.data[ 1 ][ 1 ] = vec[ 1 ];
+				result.data[ 2 ][ 2 ] = vec[ 2 ];
 				return result;
 			}
 
-			/// scale an existing matrix.
+			/// static construction of a scaling matrix from three scalars
+			static Matrix scaling( valueType x, valueType y, valueType z ) {
+				return scaling( [ x, y, z ] );
+			}
+
+			/// scale an existing matrix with an array/vector
+			Matrix scale( valueType[ 3 ] vec ) {
+				this = Matrix.scaling( vec ) * this;
+				return this;
+			}
+
+			/// scale an existing matrix with three scalars
 			Matrix scale( valueType x, valueType y, valueType z ) {
-				this = Matrix.scaling( x, y, z ) * this;
+				this = Matrix.scaling( [ x, y, z ] ) * this;
 				return this;
 			}
 
