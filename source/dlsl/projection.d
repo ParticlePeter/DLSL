@@ -205,12 +205,14 @@ mat4 vkPerspective( float fovy, float aspect, float near, float far ) {
 	const float t = 1.0f / tan( 0.5f * fovy * deg2rad );
 	const nf = near - far;
 
-
 	result[0][0] = t / aspect;
 	result[1][1] = t;
 	result[2][2] = - ( near + far ) / nf;
 	result[2][3] = 1;
 	result[3][2] = ( 2 * near * far ) / nf;
 
-	return result;
+	// premultiplying a glProjection with this clip matrix results in expected vkProjection
+	// source: https://matthewwellings.com/blog/the-new-vulkan-coordinate-system/
+	auto clip = mat4( vec4( 1, 0, 0, 0 ), vec4( 0, -1, 0, 0 ), vec4( 0, 0, 0.5, 0 ), vec4( 0, 0, 0.5, 1 ));
+	return  clip * result;
 }
