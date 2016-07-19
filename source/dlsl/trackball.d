@@ -147,4 +147,32 @@ public:
 
 		m_dirty = true; 
 	}
+
+	/// look at function with nine floats representing two points and an up vector
+	void lookAt( float ex, float ey, float ez, float tx = 0, float ty = 0, float tz = 0, float ux = 0, float uy = 1, float uz = 0 ) {
+		this.lookAt( vec3( ex, ey, ez ), vec3( tx, ty, tz ), vec3( ux, uy, uz ));
+	}
+}
+
+
+/// look at function with two points and an up vector
+auto lookAt( vec3 eye, vec3 target = vec3( 0 ), vec3 up = vec3( 0, 1, 0 )) {
+	vec3 vecZ = normalize( eye - target );	// vector from target to eye equals the camera z axis as camera look direction is negative z
+	vec3 vecX = normalize( cross( up, vecZ ));
+
+	// TODO( pp ): fix bellow, matrix constructor
+	//return mat4( vecX, 0, cross( vecZ, vecX ), 0, vecZ, 0, eye, 1 );
+	mat4 result;
+	result[0] = vec4( vecX, 0 );
+	result[1] = vec4( cross( vecZ, vecX ), 0 );
+	result[2] = vec4( vecZ, 0 );
+	result[3] = vec4( eye , 1 );
+
+	return result;
+ 
+}
+
+/// look at function with nine floats representing two points and an up vector
+auto lookAt( float ex, float ey, float ez, float tx = 0, float ty = 0, float tz = 0, float ux = 0, float uy = 1, float uz = 0 ) {
+	return lookAt( vec3( ex, ey, ez ), vec3( tx, ty, tz ), vec3( ux, uy, uz ));
 }

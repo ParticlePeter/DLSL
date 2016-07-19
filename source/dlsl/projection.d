@@ -125,26 +125,6 @@ mat4 glInverseOrthographic( float left, float right, float bottom, float top, fl
 	return result;
 }
 
-/// Construct a look at matrix ( 4x4 and floating - point matrices only ).
-mat4 lookAt( Vector!( float, 3 ) eye, Vector!( float, 3 ) target, Vector!( float, 3 ) up ) {
-	alias Vector!( float, 3 ) vec3mt;
-	vec3mt look_dir = normalize( target - eye );
-	vec3mt up_dir = normalize( up );
-
-	vec3mt right_dir = normalize( cross( look_dir, up_dir ));
-	vec3mt perp_up_dir = cross( right_dir, look_dir );
-
-	mat4 result = mat4.identity;
-	result.data[ 0 ][ 0 .. 3 ] = right_dir.data;
-	result.data[ 1 ][ 0 .. 3 ] = perp_up_dir.data;
-	result.data[ 2 ][ 0 .. 3 ] = ( - look_dir ).data;
-
-	result.data[ 0 ][ 3 ] = - dot( eye, right_dir );
-	result.data[ 1 ][ 3 ] = - dot( eye, perp_up_dir );
-	result.data[ 2 ][ 3 ] = dot( eye, look_dir );
-
-	return result;
-}
 
 unittest {
 	float aspect = 6.0 / 9.0;              
