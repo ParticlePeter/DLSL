@@ -70,8 +70,8 @@ public:
 	void orbitVelocity( float vel )		{ m_velOrbit = vel; }
 	void dollyVelocity( float vel )		{ m_velDolly = vel; }
 	mat4 matrix() 						{ m_dirty = false; return m_matrix; }
-	void focus( float  f )				{ m_recipFocus  = 1 / f; }
-	void height( float h)				{ m_recipHeight = 2 / h; }
+	void focus(  float f )				{ m_recipFocus  = 1 / f; }
+	void height( float h )				{ m_recipHeight = 2 / h; }
 	bool dirty()  { return m_dirty; }
 	//void dirty( bool b ) { m_dirty = b; }
 
@@ -129,22 +129,17 @@ public:
 
 	/// look at function with two points and an up vector
 	void lookAt( vec3 eye, vec3 target = vec3( 0 ), vec3 up = vec3( 0, 1, 0 )) {
-		vec3 vecZ = eye - target;	// vector from target to eye equals the camera z axis as camera look direction is neagtive z
-		m_dolly = length( vecZ );
+		vec3 vecZ	= eye - target;	// vector from target to eye equals the camera z axis as camera look direction is neagtive z
+		m_dolly		= length( eye - target );
+		m_target	= target;
 		vecZ /= m_dolly;
 		import std.math : asin, atan2;
 		m_phi = - rad2deg * atan2( vecZ.x(), vecZ.z());
 		m_theta = rad2deg * asin( vecZ.y());
 
-		vec3 vecX = normalize( cross( up, vecZ ));
+		// TODO(pp): compute twist from up vector
 
-		m_matrix[0].xyz = vecX;
-		m_matrix[1].xyz = cross( vecZ, vecX );
-		m_matrix[2].xyz = vecZ;
-		m_matrix[3].xyz = eye;
-
-		m_target = target;
-
+		update;
 		m_dirty = true; 
 	}
 
