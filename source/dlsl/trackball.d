@@ -13,7 +13,7 @@ module dlsl.trackball;
 
 import dlsl.vector;
 import dlsl.matrix;
-import dlsl.quaternion;
+//import dlsl.quaternion;
 
 const float	deg2rad	= 0.0174532925199432957692369076849f;
 const float	rad2deg	= 57.295779513082320876798154814105f;
