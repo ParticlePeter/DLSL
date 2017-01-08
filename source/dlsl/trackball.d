@@ -21,7 +21,7 @@ const float	rad2deg	= 57.295779513082320876798154814105f;
 
 
 
-struct Trackball {
+private struct TrackballBase( bool ORTHOGRAPHIC ) {
 nothrow:
 private:
 	float	m_phi			= 0.0f;
@@ -38,7 +38,7 @@ private:
 	mat4	m_matrix 		= mat4.identity;
 
 	vec3 	m_target 		= vec3( 0 );
-	float	m_recipFocus	= 1.0f;
+	float	m_tanFovy		= 1.0f;
 	float	m_recipHeight	= 0.002f;
 	bool	m_dirty			= false;	
 
@@ -73,8 +73,11 @@ public:
 	// TODO(pp): explain why the 3 functions bellow are required to properly compute panning (xform)
 
 	void windowHeight( float h )			{ m_recipHeight = 2 / h; }
-	void perspectiveFovy( float f )			{ import std.math : tan; m_recipFocus = tan( deg2rad * 0.5f * f ); }
-	void perspectiveFovyWindowHeight( float f, float h )	{ perspectiveFovy( f ); windowHeight( h ); }
+
+	static if( !ORTHOGRAPHIC ) {
+		void perspectiveFovy( float f )			{ import std.math : tan; m_tanFovy = tan( deg2rad * 0.5f * f ); }
+		void perspectiveFovyWindowHeight( float f, float h )	{ perspectiveFovy( f ); windowHeight( h ); }
+	}
 
 	mat4 matrix()							{ m_dirty = false; return m_matrix; }
 	bool dirty()							{ return m_dirty; }
@@ -101,7 +104,10 @@ public:
 	// use x and y vectors from rotation matrix to compute camera movement parallel to screen
 	void xform( float x, float y ) {
 		abs2rel( x, y );
-		m_target += m_velXform * m_recipFocus * m_recipHeight * m_dolly * ( x * vec3( m_matrix[0].x, m_matrix[1].x, m_matrix[2].x ) - y * vec3( m_matrix[0].y, m_matrix[1].y, m_matrix[2].y )); // Both use camRes.x, otherwise different speed in x and y
+		static if( !ORTHOGRAPHIC )
+			m_target += m_velXform * m_tanFovy * m_recipHeight * m_dolly * ( x * vec3( m_matrix[0].x, m_matrix[1].x, m_matrix[2].x ) - y * vec3( m_matrix[0].y, m_matrix[1].y, m_matrix[2].y ));
+		else
+			m_target += m_velXform * m_recipHeight * m_dolly * ( x * vec3( m_matrix[0].x, m_matrix[1].x, m_matrix[2].x ) - y * vec3( m_matrix[0].y, m_matrix[1].y, m_matrix[2].y ));
 		update;
 	}
 
@@ -109,7 +115,10 @@ public:
 	void dolly( float x, float y ) {
 		abs2rel( x, y );
 		float d = m_dolly;
-		m_dolly -= m_velDolly * m_recipHeight * m_recipFocus * d * ( x + 4 * y );
+		static if( !ORTHOGRAPHIC )
+			m_dolly -= m_velDolly * m_recipHeight * m_tanFovy * d * ( x + 4 * y );
+		else
+			m_dolly -= m_velDolly * m_recipHeight * d * ( x + 4 * y );	// does this function make sense for orthografik projections?
 		if ( m_dolly < 0.001f ) m_dolly = 0.001f;
 		update;
 	}
@@ -147,8 +156,8 @@ public:
 	}
 }
 
-
-// Todo(pp): implement struct TrackballOrthografik
+alias Trackball = TrackballBase!false;
+alias TrackballOrthographic = TrackballBase!true;
 
 
 /// look at function with two points and an up vector, returns a matrix
