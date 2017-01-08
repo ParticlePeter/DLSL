@@ -40,7 +40,7 @@ alias Matrix!( float, 4, 4 ) mat4;
 enum float	deg2rad	= 0.0174532925199432957692369076849f;
 enum float	rad2deg	= 57.295779513082320876798154814105f;
 
-version(NoReciprocalMul) {
+version( NoReciprocalMul ) {
 	private enum rmul = false;
 }	else {
 	private enum rmul = true;

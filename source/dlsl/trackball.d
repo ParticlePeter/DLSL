@@ -71,9 +71,10 @@ public:
 	void dollyVelocity( float vel )			{ m_velDolly = vel; }
 
 	// TODO(pp): explain why the 3 functions bellow are required to properly compute panning (xform)
-	void height( float h )					{ m_recipHeight = 2 / h; }
-	void fovy( float f )					{ import std.math : tan; m_recipFocus = tan( deg2rad * 0.5f * f ); }
-	void fovy_height( float f, float h )	{ height( h ); fovy( f ); }
+
+	void windowHeight( float h )			{ m_recipHeight = 2 / h; }
+	void perspectiveFovy( float f )			{ import std.math : tan; m_recipFocus = tan( deg2rad * 0.5f * f ); }
+	void perspectiveFovyWindowHeight( float f, float h )	{ perspectiveFovy( f ); windowHeight( h ); }
 
 	mat4 matrix()							{ m_dirty = false; return m_matrix; }
 	bool dirty()							{ return m_dirty; }
@@ -145,6 +146,9 @@ public:
 		this.lookAt( vec3( ex, ey, ez ), vec3( tx, ty, tz ), vec3( ux, uy, uz ));
 	}
 }
+
+
+// Todo(pp): implement struct TrackballOrthografik
 
 
 /// look at function with two points and an up vector, returns a matrix
