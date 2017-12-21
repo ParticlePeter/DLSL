@@ -154,6 +154,10 @@ public:
 	void lookAt( float ex, float ey, float ez, float tx = 0, float ty = 0, float tz = 0, float ux = 0, float uy = 1, float uz = 0 ) {
 		this.lookAt( vec3( ex, ey, ez ), vec3( tx, ty, tz ), vec3( ux, uy, uz ));
 	}
+    deprecated( "Use worldTransform instead. Function viewTransform is transform of view/eye/camera (inverted worldTransform)" )
+    mat4 matrix()               { m_dirty = false; return m_matrix; }
+    mat4 worldTransform()       { m_dirty = false; return m_matrix; }
+    mat4 viewTransform()        { m_dirty = false; return m_matrix.invertTR; }
     /// look at function with two points and an up vector, sets inner state of Trackball
     /// we construct spherical phi, theta and r (dolly) from the passed in vectors
     /// we have to compute those values in a reversed fashion as the internal matrix
