@@ -154,6 +154,37 @@ public:
 	void lookAt( float ex, float ey, float ez, float tx = 0, float ty = 0, float tz = 0, float ux = 0, float uy = 1, float uz = 0 ) {
 		this.lookAt( vec3( ex, ey, ez ), vec3( tx, ty, tz ), vec3( ux, uy, uz ));
 	}
+    /// look at function with two points and an up vector, sets inner state of Trackball
+    /// we construct spherical phi, theta and r (dolly) from the passed in vectors
+    /// we have to compute those values in a reversed fashion as the internal matrix
+    /// represents the world transform matrix and not the eye transform matrix
+    void lookAt( vec3 eye, vec3 target = vec3( 0 ), vec3 up = vec3( 0, 1, 0 )) {
+        // vector from target to eye equals the camera z axis as camera look direction is neagtive z
+        vec3 vecZ   = target - eye; // as we reconstruct the inverted world matrix we use the oposite vector
+        m_dolly     = length( vecZ );
+        m_target    = - target;     // inverted target
+        vecZ /= m_dolly;
+        import std.math : asin, atan2;
+        m_phi = rad2deg * atan2( vecZ.x, vecZ.z );  // view matrix is negative
+        m_theta = - rad2deg * asin( vecZ.y );       // view matrix is positive
+
+        // TODO(pp): compute twist from up vector
+
+        update;
+        //m_matrix = m_matrix.invertTR;
+
+        // we can and should set the eye member from the passe in eye argument
+        // update function above is prone to precision issues
+        //m_eye = eye;
+
+        // mark data as dirty
+        m_dirty = true;
+    }
+
+    /// look at function with nine floats representing two points and an up vector
+    void lookAt( float ex, float ey, float ez, float tx = 0, float ty = 0, float tz = 0, float ux = 0, float uy = 1, float uz = 0 ) {
+        lookAt( vec3( ex, ey, ez ), vec3( tx, ty, tz ), vec3( ux, uy, uz ));
+    }
 }
 
 alias Trackball = TrackballBase!false;
