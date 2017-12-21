@@ -786,7 +786,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 		assert(( m4 * v4 ) == [ 112, 128, 144, 160 ] );
 		assert(( v4 * m4 ) == [  40, 104, 168, 232 ] );
 
-		//TODO: tests for mat4, mat34, mat43, mat24, mat 42 
+		//TODO: tests for mat4, mat34, mat43, mat24, mat 42
 	}
 
 
