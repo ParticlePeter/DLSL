@@ -496,23 +496,7 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 ))  {
 		//assert( v4.data == [ 3.0f, 4.0f, 5.0f, 6.0f ] );
 	}
 
-/*
-	/// Implements dynamic swizzling.
-	/// Returns: a static valueType array
-	/// TODO : Limit to access sets, characters can be combined within one set only, set1: xyzw, set2: rgba, set3: stpq
-	@property valueType[ s.length ] opDispatch( string s )() const if ( s.length <= dimension )  {
-		valueType[ s.length ] result;
-		dispatchImpl!( 0, s )( result );
-		return result;
-	}
 
-	void dispatchImpl( int i, string s, int size )( ref valueType[ size ] result ) const  {
-		static if( s.length > 0 )  {
-			result[i] = data[  coord_to_index!( s[0] ) ];
-			dispatchImpl!( i + 1, s[ 1 .. $ ] )( result );
-		}
-	}
-*/
 	/// TODO : patch unittest according to access sets !!!
 	unittest  {
 		vec2 v2 = vec2( 1.0f, 2.0f );
@@ -690,7 +674,12 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 ))  {
 }
 
 
-@safe pure nothrow:
+
+/////////////////////////////////
+// free functions akin to glsl //
+/////////////////////////////////
+
+@safe pure nothrow @nogc:
 
 /// Vector dot product
 genType.valueType dot( genType )( in genType a, in genType b ) if ( isVector!genType )  {
