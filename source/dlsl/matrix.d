@@ -145,8 +145,15 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 		}
 
 		return "[ " ~ join( outer_parts, "\n" )[ 1 .. $ ] ~ " ]";
+	} alias asPrettyString toPrettyString;
+
+	static @property Matrix identity() if( cols == rows ) {
+		Matrix result;
+		foreach( ref r; rows )
+			foreach( ref c; cols )
+				result[r][c] = r == c ? 1 : 0;
+		return result;
 	}
-	alias asPrettyString toPrettyString;
 
 	@safe pure nothrow :
 	template isCompatibleMatrix( T ) {  enum isCompatibleMatrix = is( typeof( isCompatibleMatrixImpl( T.init )));  }
