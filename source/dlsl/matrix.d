@@ -1017,6 +1017,16 @@ auto invert( Matrix )( Matrix mat ) if( isMatrix!Matrix && Matrix.cols == Matrix
 }
 
 
+///////////////////////////////////////////////
+// Invert purely Translate-Rotate 4*4 matrix //
+///////////////////////////////////////////////
+auto invertTR( Matrix )( Matrix mat ) if( isMatrix!Matrix && Matrix.cols == 4 && Matrix.rows == 4 ) {
+	Matrix result = mat.rotation.transpose;
+	result[3] = - result.opBinary!( "*", vec4 )( mat[3] );	// why does result * mat3[3] not work ???
+	return result;
+}
+
+
 unittest {
 	mat2 m2 = mat2( 1.0f, 2.0f, vec2( 3.0f, 4.0f ));
 	assert( m2.determinant == - 2.0f );
