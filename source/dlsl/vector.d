@@ -17,7 +17,7 @@ import std.traits : isFloatingPoint, isArray;
 
 
 /// Pre-defined vector types
-alias Vector!( float, 2 ) vec2; 
+alias Vector!( float, 2 ) vec2;
 alias Vector!( float, 3 ) vec3;
 alias Vector!( float, 4 ) vec4;
 
@@ -98,21 +98,21 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 ))  {
 		assert( v4 == [ 0.0f, 1.0f, 2.0f, 0.3f ] );
 	}
 
-	/// Returns a pointer to the coordinates.	
+	/// Returns a pointer to the coordinates.
 	@property auto ptr()		{  return data.ptr;  }
 
 	/// Returns the current vector formatted as string, useful for printing the vector
 	@property string asString()	{  import std.string : format; return format( "%s", data );  }
 	alias asString toString;
 
-	@safe pure nothrow :    
+	@safe pure nothrow :
 	template isCompatibleVector( T )  {  enum isCompatibleVector = is( typeof( isCompatibleVectorImpl( T.init )));  }
 	//static void isCompatibleVectorImpl( int dim )( Vector!( valueType, dim ) vec ) if( dim <= dimension )  {}	// no valueType conversion
 	static void isCompatibleVectorImpl( vt, int dim )( Vector!( vt, dim ) vec ) if( dim <= dimension )  {}			// implicit valueType conversion
 
 	/// Unittest : isCompatibleType
 	unittest  {
-		// isCompatibleType without implicit valueType conversion 
+		// isCompatibleType without implicit valueType conversion
 		//vec2 v2; assert( v2.isCompatibleVector!vec2 ); assert( !v2.isCompatibleVector!vec3 ); assert( !v2.isCompatibleVector!vec4 );
 		//vec3 v3; assert( v3.isCompatibleVector!vec2 ); assert(  v3.isCompatibleVector!vec3 ); assert( !v3.isCompatibleVector!vec4 );
 		//vec4 v4; assert( v4.isCompatibleVector!vec2 ); assert(  v4.isCompatibleVector!vec3 ); assert(  v4.isCompatibleVector!vec4 );
@@ -139,7 +139,7 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 ))  {
 		} else static if( isStaticArray!T )  {
 			data[ i .. i + T.length ] = head;
 			construct!( i + T.length )( tail );
-		} else static if ( isCompatibleVector!T )  {   
+		} else static if ( isCompatibleVector!T )  {
 			data[ i .. i + T.dimension ] = head.data;
 			construct!( i + T.dimension )( tail );
 		} else {
@@ -151,7 +151,7 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 ))  {
 
 	private void construct( int i )() {}		// terminate
 
-	/// TODO: Unittest: Construction with combination of numeric, vector, static and dynamic array 
+	/// TODO: Unittest: Construction with combination of numeric, vector, static and dynamic array
 	unittest  {
 		auto v2 = vec2( 2.0f, 1 );
 	}
@@ -243,7 +243,7 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 ))  {
 		}
 	}
 
-	
+
 	/// Unittest Construction
 	/// TODO: Split up these Unittests
 	unittest  {
@@ -323,7 +323,7 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 ))  {
 	/// generates all possible swizzle setter properties for the default permutation ( e.g. [0,1,2,3] )
 	static string setSwizz( int[] idx )  {
 		string result;
-		if ( idx.length == 1 )  {	
+		if ( idx.length == 1 )  {
 			auto funcBody = "( valueType val )  { " ~ "data[" ~ to!string( idx[0] ) ~ "] = val; }\n";
 			result = "@property void " ~ fill[ dimension - idx.length ] ~ comp[ idx[0] ] ~ funcBody;
 		}
@@ -378,7 +378,7 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 ))  {
 			if		( dimension == 2 && property == "xy"   )  result ~= returnType ~ property ~ "()  const  {  return this;  }\n";
 			else  if( dimension == 3 && property == "xyz"  )  result ~= returnType ~ property ~ "()  const  {  return this;  }\n";
 			else  if( dimension == 4 && property == "xyzw" )  result ~= returnType ~ property ~ "()  const  {  return this;  }\n";
-			else { 
+			else {
 				result ~= returnType ~ property ~ returnString ~ "\n";
 				if ( term > 1 )  result ~= getSwizz( property, aliColor, aliTexST, returnData ~ ", ", term - 1 );
 			}
@@ -519,7 +519,7 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 ))  {
 		assert( v2.ts == [ 2.0f, 1.0f ] );
 
 		assert( vec3( 1.0f, 2.0f, 3.0f ).xyz == [ 1.0f, 2.0f, 3.0f ] );
-		assert( vec4( v2, 3.0f, 4.0f  ).xyzw == [ 1.0f, 2.0f, 3.0f, 4.0f ] );		
+		assert( vec4( v2, 3.0f, 4.0f  ).xyzw == [ 1.0f, 2.0f, 3.0f, 4.0f ] );
 		assert( vec4( v2, 3.0f, 4.0f  ).wxyz == [ 4.0f, 1.0f, 2.0f, 3.0f ] );
 		assert( vec4( 1.0f, v2.yx, 2.0f ).data == [ 1.0f, 2.0f, 1.0f, 2.0f ] );
 	}
@@ -533,7 +533,7 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 ))  {
 
 	/// TODO : This does not work
 	//XForm.xy += vec2( md.rx, md.ry );
-	
+
 	/// Negate the vector
 	Vector opUnary( string op : "-" )() const  {
 		Vector result;
@@ -664,10 +664,10 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 ))  {
 	//}
 
 	/// Comparisson Operator
-//	const bool opEquals( T )( T vec ) if ( T.dimension == dimension )  {  return data == vec.data;  }
+	const bool opEquals( T )( T vec ) if ( T.dimension == dimension )  {  return data == vec.data;  }
 
 	/// Unittest Comparisson Operator
-/*	unittest  {
+	unittest  {
 		assert( vec2( 1.0f, 2.0f ) == vec2( 1.0f, 2.0f ));
 		assert( vec2( 1.0f, 2.0f ) != vec2( 1.0f, 1.0f ));
 		assert( vec2( 1.0f, 2.0f ) == vec2d( 1.0, 2.0 ));
@@ -686,7 +686,7 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 ))  {
 		assert( !( vec4( float.nan )));
 		if ( vec4( 1.0f )) {}
 		else {  assert( false );  }
-	}*/
+	}
 }
 
 
@@ -719,7 +719,7 @@ genType cross( genType )( in genType a, in genType b ) if ( isVector!genType && 
 /// Vector length floating point valueType
 auto length( genType )( in genType v ) if ( isVector!genType )  {
 	static if ( isFloatingPoint!( genType.valueType ))	return sqrt( dot( v, v ));
-	else												return sqrt( cast( real )dot( v, v )); 
+	else												return sqrt( cast( real )dot( v, v ));
 }
 
 
@@ -743,13 +743,13 @@ genType.valueType distance( genType )( const genType a, const genType b ) if ( i
 }
 
 
-/// Flip the Vector N based on an incident vector I and a reference Vector Nref 
+/// Flip the Vector N based on an incident vector I and a reference Vector Nref
 genType faceforward( genType )( in genType N, in genType I, in genType Nref ) if ( isVector!genType )  {
 	return  dot( Nref, I ) < 0 ? N : -N;
 }
 
 
-/// Reflect the Vector I on a plane with normal N 
+/// Reflect the Vector I on a plane with normal N
 /// The normal N must already to be normalized
 genType reflect( genType )( in genType I, in genType N ) if ( isVector!genType )  {
 	return I - 2 * dot( N, I ) * N;
@@ -769,7 +769,7 @@ genType.valueType refract( genType )( genType I, genType N, genType.valueType et
 /// Unittest Geometric functions
 /// TODO : add tests for faceforward, reflect and refract
 unittest  {
-	
+
 	// dot
 	vec2 v2 = vec2( 1.0f,  3.0f );
 	assert( dot( v2, vec2( 2.0f, 2.0f )) == 8.0f );
@@ -803,14 +803,14 @@ unittest  {
 	assert( length( v4 ) == sqrt( 84.0f ));
 
 	// distance
-	assert( distance( vec2( 0.0f, 0.0f ), vec2( 0.0f, 10.0f )) == 10.0 );        
+	assert( distance( vec2( 0.0f, 0.0f ), vec2( 0.0f, 10.0f )) == 10.0 );
 }
 
 
 /// query if any entry is nan
 alias isNaN = isnan;	// as std.math.isNaN
 bool isnan( genType )( const ref genType vec ) if( isVector!genType && isFloatingPoint!( genType.valueType )) {
-	import std.math : isNaN; 
+	import std.math : isNaN;
 	foreach( const ref val; vec )
 		if( std.math.isNaN( val ))
 			return true;
@@ -823,7 +823,7 @@ alias isInfinity = isinf;	// as std.math.isInfinity
 bool isinf( genType )( const ref genType vec ) if( isVector!genType && isFloatingPoint!( genType.valueType )) {
 	import std.math : isInfinity;
 	foreach( const ref val; vec )
-		if( std.math.isInfinity( val )) 
+		if( std.math.isInfinity( val ))
 			return true;
 	return false;
 }

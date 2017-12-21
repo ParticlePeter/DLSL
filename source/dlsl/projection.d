@@ -11,7 +11,7 @@ All static methods are strongly pure.
 
 module dlsl.projection;
 
-public import dlsl.matrix;
+import dlsl.matrix;
 import dlsl.vector;
 
 import std.math	: sqrt, sin, cos, tan, PI;
@@ -20,6 +20,7 @@ import std.traits : isFloatingPoint;
 
 /// http://www.geeks3d.com/20090729/howto-perspective-projection-matrix-in-opengl/
 
+nothrow @nogc:
 
 private float[ 6 ] cperspective( float fovy, float aspect, float near, float far ) {
 	float top = near * tan( fovy * ( PI / 360.0 ));
@@ -36,7 +37,7 @@ mat4 glPerspective( float fovy, float aspect, float near, float far ) {
 	return glPerspective( cdata[ 0 ], cdata[ 1 ], cdata[ 2 ], cdata[ 3 ], cdata[ 4 ], cdata[ 5 ] );
 }
 
-/// Construct an optionally non-symmetric perspective matrix 
+/// Construct an optionally non-symmetric perspective matrix
 mat4 glPerspective( float left, float right, float bottom, float top, float near, float far )
 in {
 	assert( right - left != 0 );
@@ -63,7 +64,7 @@ mat4 glInversePerspective( float fovy, float aspect, float near, float far ) {
 	return glInversePerspective( cdata[ 0 ], cdata[ 1 ], cdata[ 2 ], cdata[ 3 ], cdata[ 4 ], cdata[ 5 ] );
 }
 
-/// Construct an inverse, optionally non-symmetric perspective matrix 
+/// Construct an inverse, optionally non-symmetric perspective matrix
 mat4 glInversePerspective( float left, float right, float bottom, float top, float near, float far )
 in {
 	assert( right - left != 0 );
@@ -108,7 +109,7 @@ body {
 	return result;
 }
 
-// ( 1 ) and ( 2 ) say this one is correct 
+// ( 1 ) and ( 2 ) say this one is correct
 /// Returns an inverse orographic matrix ( 4x4 and floating - point matrices only ).
 mat4 glInverseOrthographic( float left, float right, float bottom, float top, float near, float far ) {
 	mat4 result;
@@ -127,7 +128,7 @@ mat4 glInverseOrthographic( float left, float right, float bottom, float top, fl
 
 
 unittest {
-	float aspect = 6.0 / 9.0;              
+	float aspect = 6.0 / 9.0;
 	float[ 6 ] cp = cperspective( 60f, aspect, 1f, 100f );
 	assert(  cp[ 4 ] == 1.0f );
 	assert(  cp[ 5 ] == 100.0f );
@@ -157,20 +158,18 @@ unittest {
 
 	// maybe the next tests should be improved
 	float[ 4 ][ 4 ] m4o = mat4.orthographic( - 1.0f, 1.0f, - 1.0f, 1.0f, - 1.0f, 1.0f ).data;
-	assert( m4o == [ 
+	assert( m4o == [
 		[ 1.0f, 0.0f,   0.0f, 0.0f ],
 		[ 0.0f, 1.0f,   0.0f, 0.0f ],
 		[ 0.0f, 0.0f, - 1.0f, 0.0f ],
 		[ 0.0f, 0.0f,   0.0f, 1.0f ] ] );
 
 	float[ 4 ][ 4 ] m4oi = mat4.inverseOrthographic( - 1.0f, 1.0f, - 1.0f, 1.0f, - 1.0f, 1.0f ).data;
-	assert( m4oi == [ 
+	assert( m4oi == [
 		[ 1.0f, 0.0f,   0.0f, 0.0f ],
 		[ 0.0f, 1.0f,   0.0f, 0.0f ],
 		[ 0.0f, 0.0f, - 1.0f, 0.0f ],
 		[ 0.0f, 0.0f,   0.0f, 1.0f ] ] );
-
-	//TODO: look_at tests
 }
 
 

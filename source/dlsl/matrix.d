@@ -21,7 +21,7 @@ import std.string : format, rightJustify;
 import std.algorithm : max, min, reduce;
 
 
-/// predefined matrix types, the first number represents the number of cols 
+/// predefined matrix types, the first number represents the number of cols
 /// and the second the number of columns, if there's just one it's a nxn matrix.
 /// All of these matrices are floating - point matrices.
 alias Matrix!( float, 2, 2 ) mat2;
@@ -56,7 +56,7 @@ private void isMatrixImpl( T, int cols, int rows )( Matrix!( T, cols, rows ) mat
 /// type = the value type of each matrix element
 /// cols = count of columns of the matrix
 /// rows = count of rows of the matrix
-/// - - - 
+/// - - -
 struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows > 1 )) {
 	alias type valueType;						/// Holds the internal primitive type of the matrix;
 	alias Vector!( type, rows ) vectorType;		/// Holds the internal vectorType of the matrix;
@@ -77,7 +77,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 		assert( m2[ 0 ][ 1 ] == 1.0f );
 		assert( m2[ 1 ][ 0 ] == 2.0f );
 		assert( m2[ 1 ][ 1 ] == 3.0f );
-		
+
 		m2[ 0 ] = [ 2.0, 2.0 ];
 		m2[ 0 ] = vec2( 2.0, 2.0 );
 		//m2[ 0 .. 1 ] = [ [ 2.0f, 2.0f ] ];
@@ -92,12 +92,12 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 
 		m3[ 0 ][ 0 .. $ ] = 0.0f;
 		assert(  m3 == [[ 0.0f, 0.0f, 0.0f ],
-						[ 1.0f, 1.1f, 1.2f ], 
+						[ 1.0f, 1.1f, 1.2f ],
 						[ 2.0f, 2.1f, 2.2f ] ] );
 		//m3[ 1 .. 3 ]  = [ [ 1, 1, 1 ], [ 2, 2, 2 ] ];
 		m3[ 1 .. 3 ] =  [ vec3( 1, 1, 1 ), vec3( 2, 2, 2 ) ];
 		assert(  m3 == [[ 0.0f, 0.0f, 0.0f ],
-						[ 1.0f, 1.0f, 1.0f ], 
+						[ 1.0f, 1.0f, 1.0f ],
 						[ 2.0f, 2.0f, 2.0f ]] );
 
 		mat4 m4 = mat4( 0.0f, 0.1f, 0.2f, 0.3f,
@@ -119,7 +119,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 
 
 	/// Returns the pointer to the stored values as OpenGL requires it.
-	/// Note this will return a pointer to a $( RED column - major ) matrix, 
+	/// Note this will return a pointer to a $( RED column - major ) matrix,
 	/// $( RED this is the OpneGL convention and expected in programs via Uniforms or UBOs ).
 	@property auto ptr() { return data[ 0 ].ptr; }
 
@@ -155,7 +155,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 	template isCompatibleVector( T ) {  enum isCompatibleVector = is( typeof( isCompatibleVectorImpl( T.init )));  }
 	static void isCompatibleVectorImpl( int dim )( Vector!( valueType, dim ) vec ) {}
 
-	
+
 	/// TODO: Fix Construction with combination of numeric, static and dynamic array, vector and matrix
 	private void construct( int i, T, Tail... )( T head, Tail tail ) {
 		static if( i >= cols * rows ) {
@@ -184,23 +184,23 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 	/// If a matrix with less cols and columns is passed, the passed matrix will be stored in the upper left of an identity matrix.
 	/// It's also allowed to pass vectors and scalars at a time, but the vectors dimension must match the number of columns and align correctly.
 	/// Examples:
-	/// - - - 
+	/// - - -
 	/// mat2 m2 = mat2( 0.0f ); // mat2 m2 = mat2( 0.0f, 0.0f, 0.0f, 0.0f );
 	/// mat3 m3 = mat3( m2 ); // mat3 m3 = mat3( 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f );
 	/// mat3 m3_2 = mat3( vec3( 1.0f, 2.0f, 3.0f ), 4.0f, 5.0f, 6.0f, vec3( 7.0f, 8.0f, 9.0f ));
 	/// mat4 m4 = mat4.identity; // just an identity matrix
 	/// mat3 m3_3 = mat3( m4 ); // mat3 m3_3 = mat3.identity
-	/// - - - 
+	/// - - -
 	this( Args... )( Args args ) {  construct!( 0 )( args );  }
 
 	/// Construct a Matrix from another Matrix, equal sized or bigger
-	this( T )( T mat ) if( isMatrix!T && ( T.rows >= rows ) && ( T.cols >= cols )) {
-		for( int c = 0; c < cols; ++c ) {
-			for( int r = 0; r < rows; ++r ) {
-				data[ c ][ r ] = mat.data[ c ][ r ];
-			}
-		}
-	}
+//	this( T )( T mat ) if( isMatrix!T && ( T.rows >= rows ) && ( T.cols >= cols )) {
+//		for( int c = 0; c < cols; ++c ) {
+//			for( int r = 0; r < rows; ++r ) {
+//				data[ c ][ r ] = mat.data[ c ][ r ];
+//			}
+//		}
+//	}
 
 
 	/// Construct a Matrix from another Matrix
@@ -216,7 +216,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 	}
 
 	/// Construct a Matrix from a single value, for non- and square matrices
-	/// see GLSL 4.5 Spec, section 5.4.2 Vector and Matrix Constructors 
+	/// see GLSL 4.5 Spec, section 5.4.2 Vector and Matrix Constructors
 	this()( valueType value ) {
 		clear( 0 );
 		foreach( rc; 0 .. cols < rows ? cols : rows ) {
@@ -401,7 +401,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 			}
 		}
 
-		/// extract translation part of the matrix in a copy 
+		/// extract translation part of the matrix in a copy
 		Matrix translation() {
 			Matrix result = Matrix.identity;
 			result[ $-1 ][ 0 .. $-1 ] = data[ $-1 ][ 0 .. $-1 ];
@@ -430,7 +430,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 		//////////////
 		// Rotation // - integer rotations might not be useful, but should they be disabled?
 		//////////////
-		static if( cols == 2 || cols == 3 ) {		// non- and homogeneous 2D rotations		
+		static if( cols == 2 || cols == 3 ) {		// non- and homogeneous 2D rotations
 			/// static construction of a rotation matrix
 			static Matrix rotation( real angle ) {
 				Matrix result = Matrix.identity;
@@ -515,7 +515,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 				return result;
 			}
 
-			/// static construction of a rotation matrix with an angle around X axis 
+			/// static construction of a rotation matrix with an angle around X axis
 			static Matrix rotationX( real angle ) { return rotationA!( 1, 2 )( angle );	} /// A-canonical = X
 
 			/// static construction of a rotation matrix with an angle around Y axis
@@ -576,7 +576,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 			}
 		}
 
-		/// extract rotation part of the matrix in a copy 
+		/// extract rotation part of the matrix in a copy
 		// TODO(pp): fix proper extraction, currently works only right if determinant = 1
 		Matrix rotation() {
 			Matrix result = data;
@@ -618,7 +618,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 				return result;
 			}
 
-			/// scale an existing matrix 
+			/// scale an existing matrix
 			Matrix scale( valueType x ) {
 				this = Matrix.scaling( x ) * this;
 				return this;
@@ -639,7 +639,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 				return scaling( [ x, y ] );
 			}
 
-			/// scale an existing matrix with an array/vector 
+			/// scale an existing matrix with an array/vector
 			Matrix scale( valueType[ 2 ] vec ) {
 				this = Matrix.scaling( vec ) * this;
 				return this;
@@ -691,7 +691,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 		}
 
 		/// extract scaling part of the matrix in a copy
-		Matrix scale() { 
+		Matrix scale() {
 			Matrix result = Matrix.identity;
 			foreach( rc; 0 .. cols - 1 )
 				result[ rc ][ rc ] = data[ rc ][ rc ];
@@ -703,7 +703,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 							3.0f, 4.0f, 5.0f,
 							6.0f, 7.0f, 1.0f );
 
-			assert( m3.scale.data  ==  [[ 0.0f, 0.0f, 0.0f ], 
+			assert( m3.scale.data  ==  [[ 0.0f, 0.0f, 0.0f ],
 										[ 0.0f, 4.0f, 0.0f ],
 										[ 0.0f, 0.0f, 1.0f ] ] );
 
@@ -754,20 +754,24 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 	}
 
 
-	/// Matrix-vector multiplication
-	auto opBinary( string op : "*", V )( V vec ) const if( isCompatibleVector!V && V.dimension == cols ) {
+	/// matrix-vector multiplication
+	auto opBinary( string op : "*", V )( V vec ) const if( isVector!V && V.dimension == cols ) {
 		vectorType result;
 		result.clear( 0 );
-		foreach( c; 0 .. cols )
-			foreach( r; 0 .. rows )
+		foreach( r; 0 .. rows )
+			foreach( c; 0 .. cols )
 				result[ r ] += data[ c ][ r ] * vec[ c ];
 		return result;
 	}
 
-	/// Vector-Matrix multiplication
-	auto opBinaryRight( string op : "*", V : vectorType )( V vec ) const if( isVector!V && V.dimension == rows ) {
-		auto transposedMatrix = transposed();
-		return transposedMatrix * vec;
+	/// vector-Matrix multiplication, optimized instead of transposing matrix and multiplying
+	auto opBinaryRight( string op : "*", V )( V vec ) const if( isVector!V && V.dimension == rows ) {
+		Vector!( valueType, cols ) result;
+		result.clear( 0 );
+		foreach( c; 0 .. cols )
+			foreach( r; 0 .. rows )
+				result[ c ] += data[ c ][ r ] * vec[ r ];
+		return result;
 	}
 
 	unittest {		/// matrix-vector, vector-matrix multiplication
@@ -885,7 +889,7 @@ auto transpose( Matrix )( Matrix mat ) if( isMatrix!Matrix ) {
 	return result;
 }
 
-/// Unittest transpose 
+/// Unittest transpose
 unittest {
 	mat2 m2 = mat2( 1.0f );
 	assert( m2.transpose.data == mat2( 1.0f ).data );
@@ -963,7 +967,7 @@ auto invert( Matrix )( Matrix mat ) if( isMatrix!Matrix && Matrix.cols == Matrix
 			result = [
 				vectorType(   mat[ 1 ][ 1 ], - mat[ 0 ][ 1 ] ) " ~ op ~ " d,
 				vectorType( - mat[ 1 ][ 0 ],   mat[ 0 ][ 0 ] ) " ~ op ~ " d ];" );
-	
+
 	else static if( Matrix.cols == 3 )
 		mixin( "
 			result = [
@@ -1011,7 +1015,7 @@ auto invert( Matrix )( Matrix mat ) if( isMatrix!Matrix && Matrix.cols == Matrix
 							( mat[ 0 ][ 0 ] * mat[ 1 ][ 2 ] * mat[ 3 ][ 1 ] + mat[ 0 ][ 1 ] * mat[ 1 ][ 0 ] * mat[ 3 ][ 2 ] + mat[ 0 ][ 2 ] * mat[ 1 ][ 1 ] * mat[ 3 ][ 0 ]
 							- mat[ 0 ][ 0 ] * mat[ 1 ][ 1 ] * mat[ 3 ][ 2 ] - mat[ 0 ][ 1 ] * mat[ 1 ][ 2 ] * mat[ 3 ][ 0 ] - mat[ 0 ][ 2 ] * mat[ 1 ][ 0 ] * mat[ 3 ][ 1 ] ) " ~ op ~ " d,
 							( mat[ 0 ][ 0 ] * mat[ 1 ][ 1 ] * mat[ 2 ][ 2 ] + mat[ 0 ][ 1 ] * mat[ 1 ][ 2 ] * mat[ 2 ][ 0 ] + mat[ 0 ][ 2 ] * mat[ 1 ][ 0 ] * mat[ 2 ][ 1 ]
-							- mat[ 0 ][ 0 ] * mat[ 1 ][ 2 ] * mat[ 2 ][ 1 ] - mat[ 0 ][ 1 ] * mat[ 1 ][ 0 ] * mat[ 2 ][ 2 ] - mat[ 0 ][ 2 ] * mat[ 1 ][ 1 ] * mat[ 2 ][ 0 ] ) " ~ op ~ " d ) ];" );	
+							- mat[ 0 ][ 0 ] * mat[ 1 ][ 2 ] * mat[ 2 ][ 1 ] - mat[ 0 ][ 1 ] * mat[ 1 ][ 0 ] * mat[ 2 ][ 2 ] - mat[ 0 ][ 2 ] * mat[ 1 ][ 1 ] * mat[ 2 ][ 0 ] ) " ~ op ~ " d ) ];" );
 
 	return result;
 }
@@ -1120,7 +1124,7 @@ unittest {		/// Matrix.isvalid
 
 	assert( mt1.data == [[ 1.0f, 2.0f, 3.0f ], [ 4.0f, 5.0f, 6.0f ]] );
 	assert( mt2.data == [[ 6.0f, - 1.0f ], [ 3.0f, 2.0f ], [ 0.0f, - 3.0f ]] );
-}	
+}
 
 
 
