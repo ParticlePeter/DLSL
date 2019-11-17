@@ -11,7 +11,7 @@ All static methods are strongly pure.
 
 module dlsl.matrix;
 
-import dlsl.vector;
+public import dlsl.vector;
 
 import std.conv	: to;
 import std.math	: sqrt, sin, cos, tan, PI;
@@ -25,16 +25,21 @@ import std.algorithm : max, min, reduce;
 /// and the second the number of columns, if there's just one it's a nxn matrix.
 /// All of these matrices are floating - point matrices.
 alias Matrix!( float, 2, 2 ) mat2;
-alias Matrix!( float, 2, 3 ) mat23;
-alias Matrix!( float, 2, 4 ) mat24;
-
-alias Matrix!( float, 3, 2 ) mat32;
 alias Matrix!( float, 3, 3 ) mat3;
-alias Matrix!( float, 3, 4 ) mat34;
-
-alias Matrix!( float, 4, 2 ) mat42;
-alias Matrix!( float, 4, 3 ) mat43;
 alias Matrix!( float, 4, 4 ) mat4;
+
+alias Matrix!( float, 2, 2 ) mat2x2;
+alias Matrix!( float, 2, 3 ) mat2x3;
+alias Matrix!( float, 2, 4 ) mat2x4;
+
+alias Matrix!( float, 3, 2 ) mat3x2;
+alias Matrix!( float, 3, 3 ) mat3x3;
+alias Matrix!( float, 3, 4 ) mat3x4;
+
+alias Matrix!( float, 4, 2 ) mat4x2;
+alias Matrix!( float, 4, 3 ) mat4x3;
+alias Matrix!( float, 4, 4 ) mat4x4;
+
 
 
 enum float	deg2rad	= 0.0174532925199432957692369076849f;
@@ -136,9 +141,9 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 								  format( fmtr, reduce!( min )( data[] )).length ) - 1;
 
 		string[] outer_parts;
-		foreach( valueType[] col; data ) {
+		foreach( type[] col; data ) {
 			string[] inner_parts;
-			foreach( valueType row; col ) {
+			foreach( type row; col ) {
 				inner_parts ~= rightJustify( format( fmtr, row ), rjust );
 			}
 			outer_parts ~= " [ " ~ join( inner_parts, ", " ) ~ " ]";
@@ -147,30 +152,23 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 		return "[ " ~ join( outer_parts, "\n" )[ 1 .. $ ] ~ " ]";
 	} alias asPrettyString toPrettyString;
 
-	static @property Matrix identity() if( cols == rows ) {
-		Matrix result;
-		foreach( ref r; rows )
-			foreach( ref c; cols )
-				result[r][c] = r == c ? 1 : 0;
-		return result;
-	}
 
 	@safe pure nothrow :
 	template isCompatibleMatrix( T ) {  enum isCompatibleMatrix = is( typeof( isCompatibleMatrixImpl( T.init )));  }
-	static void isCompatibleMatrixImpl( int col, int row )( Matrix!( valueType, col, row ) mat ) {}
+	static void isCompatibleMatrixImpl( int col, int row )( Matrix!( type, col, row ) mat ) {}
 
 	template isCompatibleVector( T ) {  enum isCompatibleVector = is( typeof( isCompatibleVectorImpl( T.init )));  }
-	static void isCompatibleVectorImpl( int dim )( Vector!( valueType, dim ) vec ) {}
+	static void isCompatibleVectorImpl( int dim )( Vector!( type, dim ) vec ) {}
 
 
 	/// TODO: Fix Construction with combination of numeric, static and dynamic array, vector and matrix
 	private void construct( int i, T, Tail... )( T head, Tail tail ) {
 		static if( i >= cols * rows ) {
 			static assert( false, "constructor has too many arguments" );
-		}	else static if( is( T : valueType )) {
+		}	else static if( is( T : type )) {
 			data[ i / rows ][ i % rows ] = head;
 			construct!( i + 1 )( tail );
-		}	else static if( is( T == Vector!( valueType, rows ))) {
+		}	else static if( is( T == Vector!( type, rows ))) {
 			static if( i % rows == 0 ) {
 				data[ i / rows ] = head;
 				construct!( i + T.dimension )( tail );
@@ -178,7 +176,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 				static assert( false, "Can't convert Vector into the matrix. Maybe it doesn't align to the columns correctly or dimension doesn't fit" );
 			}
 		}	/*else {
-			static assert( false, "Matrix constructor argument must be of type " ~ valueType.stringof ~ " or Vector, not " ~ T.stringof );
+			static assert( false, "Matrix constructor argument must be of type " ~ type.stringof ~ " or Vector, not " ~ T.stringof );
 		}*/
 	}
 
@@ -222,17 +220,73 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 		}
 	}
 
+
 	/// Construct a Matrix from a single value, for non- and square matrices
 	/// see GLSL 4.5 Spec, section 5.4.2 Vector and Matrix Constructors
-	this()( valueType value ) {
+	this()( type value ) {
 		clear( 0 );
 		foreach( rc; 0 .. cols < rows ? cols : rows ) {
 			data[ rc ][ rc ] = value;
 		}
 	}
 
+
+
+
+
+	/// Construct a matrix from a quaternion or dual quaternion
+	static if( cols >= 3 && rows >= 3 ) {
+		import dlsl.quaternion, dlsl.dual_quaternion;
+
+		/// common code for quternion and dual quaternion
+		private void rotationFromQuternion( const ref Quaternion!type q ) {
+		    type xx = q.x ^^ 2;		//     xx      = X * X;
+		    type xy = q.x * q.y;	//     xy      = X * Y;
+		    type xz = q.x * q.z;	//     xz      = X * Z;
+		    type xw = q.x * q.w;	//     xw      = X * W;
+
+		    type yy = q.y ^^ 2;		//     yy      = Y * Y;
+		    type yz = q.y * q.z;	//     yz      = Y * Z;
+		    type yw = q.y * q.w;	//     yw      = Y * W;
+
+		    type zz = q.z ^^ 2;		//     zz      = Z * Z;
+		    type zw = q.z * q.w;	//     zw      = Z * W;
+
+		    data[0][0] = 1 - 2 * ( yy + zz );	// m00 = 1 - 2 * ( yy + zz )
+		    data[1][0] = 2 * ( xy - zw );		// m01 =     2 * ( xy - zw )
+		    data[2][0] = 2 * ( xz + yw );		// m02 =     2 * ( xz + yw )
+		    data[0][1] = 2 * ( xy + zw );		// m10 =     2 * ( xy + zw )
+		    data[1][1] = 1 - 2 * ( xx + zz );	// m11 = 1 - 2 * ( xx + zz )
+		    data[2][1] = 2 * ( yz - xw );		// m12 =     2 * ( yz - xw )
+		    data[0][2] = 2 * ( xz - yw );		// m20 =     2 * ( xz - yw )
+		    data[1][2] = 2 * ( yz + xw );		// m21 =     2 * ( yz + xw )
+		    data[2][2] = 1 - 2 * ( xx + yy );	// m22 = 1 - 2 * ( xx + yy );
+		}
+
+		this( Q_OR_DQ )( Q_OR_DQ q ) if( isQuaternion!Q_OR_DQ || isDualQuaternion!Q_OR_DQ ) {
+
+			// common to quaternion and dual quaternion
+		    static if( rows == 4 ) data[3][0] = data[3][1] = data[3][2] = 0;
+		    static if( cols == 4 && rows == 4 ) data[3][3] = 1;
+
+		    // quaternion
+			static if( isQuaternion!Q_OR_DQ ) {
+				static if( cols == 4 ) data[0][3] = data[1][3] = data[2][3] = 0;
+			    rotationFromQuternion( q );
+
+			// dual quaternion
+			} else {	// isDualQuaternion!Q_OR_DQ = true
+			    static if( cols == 4 )
+			    	data[ 0..3 ] = dq.translation()[];
+
+			    rotationFromQuternion( dq.r );
+			}
+		}
+	}
+
+
 	/// Sets all values of the matrix to value ( each column in each col will contain this value ).
-	void clear( valueType value ) {
+	void clear( type value ) {
 		foreach( ref vec; data )
 			vec[] = value;
 	}
@@ -331,16 +385,17 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 		/////////////////
 		// Translation //
 		/////////////////
+
 		static if( cols == 2 ) {			// homogeneous 1D translations
 			/// static construction of a translation matrix
-			static Matrix translation( valueType x ) {
+			static Matrix translation( type x ) {
 				Matrix result = Matrix.identity;
 				result.data[ 1 ][ 0 ] = x;
 				return result;
 			}
 
 			/// translate an existing matrix
-			Matrix translate( valueType x ) {
+			Matrix translate( type x ) {
 				this = Matrix.translation( x ) * this;
 				return this;
 			}
@@ -348,25 +403,25 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 
 		else static if( cols == 3 ) {		// homogeneous 2D translations
 			/// static construction of a translation matrix from an array/vector
-			static Matrix translation( valueType[ 2 ] vec )  {
+			static Matrix translation( type[ 2 ] vec )  {
 				Matrix result = Matrix.identity;
 				result.data[ 2 ][ 0..2 ] = vec;
 				return result;
 			}
 
 			/// static construction of a translation matrix from two coordinates
-			static Matrix translation( valueType x, valueType y )  {
+			static Matrix translation( type x, type y )  {
 				return translation( [ x, y ] );
 			}
 
 			/// translate an existing matrix with an array/vector
-			Matrix translate( valueType[ 2 ] vec ) {
+			Matrix translate( type[ 2 ] vec ) {
 				this = Matrix.translation( vec ) * this;
 				return this;
 			}
 
 			/// translate an existing matrix with two scalars
-			Matrix translate( valueType x, valueType y ) {
+			Matrix translate( type x, type y ) {
 				this = Matrix.translation( [ x, y ] ) * this;
 				return this;
 			}
@@ -374,25 +429,25 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 
 		else static if( cols == 4 ) {		// homogeneous 3D translations
 			/// static construction of a translation matrix from an array/vector
-			static Matrix translation( valueType[ 3 ] vec )  {
+			static Matrix translation( type[ 3 ] vec )  {
 				Matrix result = Matrix.identity;
 				result.data[ 3 ][ 0..3 ] = vec;
 				return result;
 			}
 
 			/// static construction of a translation matrix from three coordinates
-			static Matrix translation( valueType x, valueType y, valueType z )  {
+			static Matrix translation( type x, type y, type z )  {
 				return translation( [ x, y, z ] );
 			}
 
 			/// translate an existing matrix with a vector
-			Matrix translate( valueType[ 3 ] vec ) {
+			Matrix translate( type[ 3 ] vec ) {
 				this = Matrix.translation( vec ) * this;
 				return this;
 			}
 
 			/// translate an existing matrix with three scalars
-			Matrix translate( valueType x, valueType y, valueType z ) {
+			Matrix translate( type x, type y, type z ) {
 				this = Matrix.translation( [ x, y, z ] ) * this;
 				return this;
 			}
@@ -437,12 +492,13 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 		//////////////
 		// Rotation // - integer rotations might not be useful, but should they be disabled?
 		//////////////
+
 		static if( cols == 2 || cols == 3 ) {		// non- and homogeneous 2D rotations
 			/// static construction of a rotation matrix
 			static Matrix rotation( real angle ) {
 				Matrix result = Matrix.identity;
-				valueType cosAngle = to!valueType( cos( angle ));
-				valueType sinAngle = to!valueType( sin( angle ));
+				type cosAngle = to!type( cos( angle ));
+				type sinAngle = to!type( sin( angle ));
 				result.data[ 0 ][ 0 ] = cosAngle;
 				result.data[ 1 ][ 0 ] = - sinAngle;
 				result.data[ 0 ][ 1 ] = sinAngle;
@@ -459,7 +515,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 
 		static if( cols >= 3 ) {						// non- and homogeneous 3D rotations
 			/// static construction of a rotation matrix angle and axis
-			static Matrix rotation( real angle, Vector!( valueType, 3 ) axis ) {
+			static Matrix rotation( real angle, Vector!( type, 3 ) axis ) {
 				Matrix result = Matrix.identity;
 
 				auto length = axis.length;
@@ -475,34 +531,34 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 				const real cosAngle = cos( angle );
 				const real sinAngle = sin( angle );
 
-				Vector!( valueType, 3 ) temp = ( 1 - cosAngle ) * axis;
+				Vector!( type, 3 ) temp = ( 1 - cosAngle ) * axis;
 
-				result.data[ 0 ][ 0 ] = to!valueType( cosAngle	+	temp.x * axis.x );
-				result.data[ 0 ][ 1 ] = to!valueType(				temp.x * axis.y + sinAngle * axis.z );
-				result.data[ 0 ][ 2 ] = to!valueType(				temp.x * axis.z - sinAngle * axis.y );
-				result.data[ 1 ][ 0 ] = to!valueType(				temp.y * axis.x - sinAngle * axis.z );
-				result.data[ 1 ][ 1 ] = to!valueType( cosAngle	+	temp.y * axis.y );
-				result.data[ 1 ][ 2 ] = to!valueType(				temp.y * axis.z + sinAngle * axis.x );
-				result.data[ 2 ][ 0 ] = to!valueType(				temp.z * axis.x + sinAngle * axis.y );
-				result.data[ 2 ][ 1 ] = to!valueType(				temp.z * axis.y - sinAngle * axis.x );
-				result.data[ 2 ][ 2 ] = to!valueType( cosAngle	+	temp.z * axis.z );
+				result.data[ 0 ][ 0 ] = to!type( cosAngle	+	temp.x * axis.x );
+				result.data[ 0 ][ 1 ] = to!type(				temp.x * axis.y + sinAngle * axis.z );
+				result.data[ 0 ][ 2 ] = to!type(				temp.x * axis.z - sinAngle * axis.y );
+				result.data[ 1 ][ 0 ] = to!type(				temp.y * axis.x - sinAngle * axis.z );
+				result.data[ 1 ][ 1 ] = to!type( cosAngle	+	temp.y * axis.y );
+				result.data[ 1 ][ 2 ] = to!type(				temp.y * axis.z + sinAngle * axis.x );
+				result.data[ 2 ][ 0 ] = to!type(				temp.z * axis.x + sinAngle * axis.y );
+				result.data[ 2 ][ 1 ] = to!type(				temp.z * axis.y - sinAngle * axis.x );
+				result.data[ 2 ][ 2 ] = to!type( cosAngle	+	temp.z * axis.z );
 
 				return result;
 			}
 
 			/// static construction of a rotation matrix angle and axis coordinates
-			static Matrix rotation( real angle, valueType x, valueType y, valueType z ) {
-				return Matrix.rotation( angle, Vector!( valueType, 3 )( x, y, z ));
+			static Matrix rotation( real angle, type x, type y, type z ) {
+				return Matrix.rotation( angle, Vector!( type, 3 )( x, y, z ));
 			}
 
 			/// rotate an existing matrix with an angle around an axis
-			Matrix rotate( real angle, Vector!( valueType, 3 ) axis ) {
+			Matrix rotate( real angle, Vector!( type, 3 ) axis ) {
 				this = rotation( angle, axis ) * this;
 				return this;
 			}
 
 			/// rotate an existing matrix with an angle around axis coordinates
-			Matrix rotate( real angle, valueType x, valueType y, valueType z  ) {
+			Matrix rotate( real angle, type x, type y, type z  ) {
 				this = rotation( angle, x, y, z ) * this;
 				return this;
 			}
@@ -511,8 +567,8 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 			private static Matrix rotationA( ubyte a, ubyte b )( real angle ) {
 				Matrix result = Matrix.identity;
 
-				valueType cosAngle = to!valueType( cos( angle ));
-				valueType sinAngle = to!valueType( sin( angle ));
+				type cosAngle = to!type( cos( angle ));
+				type sinAngle = to!type( sin( angle ));
 
 				result.data[ a ][ a ] = cosAngle;
 				result.data[ b ][ a ] = - sinAngle;
@@ -580,36 +636,45 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 				//assert( mat4.rotationZ( 3 ).data == rotZ.data );
 				//assert( rotZ.data == mat4.identity.rotateZ( 3 ).data );
 				//assert( rotZ.data == mat4.rotation( 3, vec3( 0.0f, 0.0f, 1.0f )).data );
+
 			}
-		}
 
-		/// extract rotation part of the matrix in a copy
-		// TODO(pp): fix proper extraction, currently works only right if determinant = 1
-		Matrix rotation() {
-			Matrix result = data;
-			result[ $-1 ][ 0..$-1 ] = 0;
-			result[ 0..$-1 ][ $-1 ] = 0;
-			result[ $-1 ][ $-1 ] = 1;
-			return result;
-		}
+			/// extract rotation part of the matrix in a copy
+			// TODO(pp): fix proper extraction, currently works only right if determinant = 1
+			Matrix rotation() {
+				Matrix result = this;
+				result[ rows - 1 ][ 0 ] = 0;
+				result[ rows - 1 ][ 1 ] = 0;
+				static if( cols == 4 )
+					result[ rows - 1 ][ 2 ] = 0;
 
-		unittest {
-			mat3 m3 = mat3( 0.0f, 1.0f, 2.0f,
-							3.0f, 4.0f, 5.0f,
-							6.0f, 7.0f, 1.0f );
-			assert( m3.rotation.data == [[ 0.0f, 1.0f, 0.0f ],
-										 [ 3.0f, 4.0f, 0.0f ],
-										 [ 0.0f, 0.0f, 1.0f ]] );
+				result[ 0 ][ cols - 1 ] = 0;
+				result[ 1 ][ cols - 1 ] = 0;
+				static if( rows == 4 )
+					result[ 2 ][ cols - 1 ] = 0;
 
-			mat4 m4 = mat4(  0.0f,  1.0f,  2.0f,  3.0f,
-							 4.0f,  5.0f,  6.0f,  7.0f,
-							 8.0f,  9.0f, 10.0f, 11.0f,
-							12.0f, 13.0f, 14.0f,  1.0f );
+				result[ rows - 1 ][ cols - 1 ] = 1;
+				return result;
+			}
 
-			assert( m4.rotation.data == [[  0.0f,  1.0f,  2.0f, 0.0f ],
-										 [  4.0f,  5.0f,  6.0f, 0.0f ],
-										 [  8.0f,  9.0f, 10.0f, 0.0f ],
-										 [  0.0f,  0.0f,  0.0f, 1.0f ]] );
+			unittest {
+				mat3 m3 = mat3( 0.0f, 1.0f, 2.0f,
+								3.0f, 4.0f, 5.0f,
+								6.0f, 7.0f, 1.0f );
+				assert( m3.rotation.data == [[ 0.0f, 1.0f, 0.0f ],
+											 [ 3.0f, 4.0f, 0.0f ],
+											 [ 0.0f, 0.0f, 1.0f ]] );
+
+				mat4 m4 = mat4(  0.0f,  1.0f,  2.0f,  3.0f,
+								 4.0f,  5.0f,  6.0f,  7.0f,
+								 8.0f,  9.0f, 10.0f, 11.0f,
+								12.0f, 13.0f, 14.0f,  1.0f );
+
+				assert( m4.rotation.data == [[  0.0f,  1.0f,  2.0f, 0.0f ],
+											 [  4.0f,  5.0f,  6.0f, 0.0f ],
+											 [  8.0f,  9.0f, 10.0f, 0.0f ],
+											 [  0.0f,  0.0f,  0.0f, 1.0f ]] );
+			}
 		}
 
 
@@ -617,16 +682,17 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 		/////////////
 		// Scaling //
 		/////////////
+
 		static if( cols == 2 ) {						// homogeneous 1D scaling
 			/// static construction of a scaling matrix
-			static Matrix scaling( valueType x ) {
+			static Matrix scaling( type x ) {
 				Matrix result = Matrix.identity;
 				result.data[ 0 ][ 0 ] = x;
 				return result;
 			}
 
 			/// scale an existing matrix
-			Matrix scale( valueType x ) {
+			Matrix scale( type x ) {
 				this = Matrix.scaling( x ) * this;
 				return this;
 			}
@@ -634,7 +700,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 
 		static if( cols == 2 || cols == 3 ) {		// non- and homogeneous 2D scaling
 			/// static construction of a scaling matrix from an array/vector
-			static Matrix scaling( valueType[ 2 ] vec ) {
+			static Matrix scaling( type[ 2 ] vec ) {
 				Matrix result = Matrix.identity;
 				result.data[ 0 ][ 0 ] = vec[ 0 ];
 				result.data[ 1 ][ 1 ] = vec[ 1 ];
@@ -642,18 +708,18 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 			}
 
 			/// static construction of a scaling matrix from two scalars
-			static Matrix scaling( valueType x, valueType y ) {
+			static Matrix scaling( type x, type y ) {
 				return scaling( [ x, y ] );
 			}
 
 			/// scale an existing matrix with an array/vector
-			Matrix scale( valueType[ 2 ] vec ) {
+			Matrix scale( type[ 2 ] vec ) {
 				this = Matrix.scaling( vec ) * this;
 				return this;
 			}
 
 			/// scale an existing matrix with two scalars
-			Matrix scale( valueType x, valueType y ) {
+			Matrix scale( type x, type y ) {
 				this = Matrix.scaling( [ x, y ] ) * this;
 				return this;
 			}
@@ -661,7 +727,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 
 		else static if( cols >= 3 ) {
 			/// static construction of a scaling matrix from an array/vector
-			static Matrix scaling( valueType[ 3 ] vec ) {
+			static Matrix scaling( type[ 3 ] vec ) {
 				Matrix result = Matrix.identity;
 				result.data[ 0 ][ 0 ] = vec[ 0 ];
 				result.data[ 1 ][ 1 ] = vec[ 1 ];
@@ -670,18 +736,18 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 			}
 
 			/// static construction of a scaling matrix from three scalars
-			static Matrix scaling( valueType x, valueType y, valueType z ) {
+			static Matrix scaling( type x, type y, type z ) {
 				return scaling( [ x, y, z ] );
 			}
 
 			/// scale an existing matrix with an array/vector
-			Matrix scale( valueType[ 3 ] vec ) {
+			Matrix scale( type[ 3 ] vec ) {
 				this = Matrix.scaling( vec ) * this;
 				return this;
 			}
 
 			/// scale an existing matrix with three scalars
-			Matrix scale( valueType x, valueType y, valueType z ) {
+			Matrix scale( type x, type y, type z ) {
 				this = Matrix.scaling( [ x, y, z ] ) * this;
 				return this;
 			}
@@ -728,6 +794,11 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 	}	// end static if( cols == rows )
 
 
+
+	///////////////
+	// Operators //
+	///////////////
+
 	/// Component-wise binary matrix-scalar operation: addition, subtraction, multiplication, division
 	auto opBinary( string op, T )( T s ) const if( isNumeric!T && (( op == "+" ) || ( op == "-" ) || ( op == "*" ) || ( op == "/" ))) {
 		Matrix result;
@@ -757,7 +828,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 		assert(( m3 * 2 ).data == [ [ 2.0f, 4.0f, 6.0f ], [ 8.0f, 10.0f, 12.0f ], [ 14.0f, 16.0f, 18.0f ] ] );
 		assert(( 2 * m3 ).data == ( m3 * 2 ).data );
 
-		//TODO: tests for mat4, mat34
+		//TODO: tests for mat4, mat3x4
 	}
 
 
@@ -773,7 +844,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 
 	/// vector-Matrix multiplication, optimized instead of transposing matrix and multiplying
 	auto opBinaryRight( string op : "*", V )( V vec ) const if( isVector!V && V.dimension == rows ) {
-		Vector!( valueType, cols ) result;
+		Vector!( type, cols ) result;
 		result.clear( 0 );
 		foreach( c; 0 .. cols )
 			foreach( r; 0 .. rows )
@@ -797,7 +868,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 		assert(( m4 * v4 ) == [ 112, 128, 144, 160 ] );
 		assert(( v4 * m4 ) == [  40, 104, 168, 232 ] );
 
-		//TODO: tests for mat4, mat34, mat43, mat24, mat 42
+		//TODO: tests for mat4, mat3x4, mat4x3, mat2x4, mat 42
 	}
 
 
@@ -813,7 +884,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 
 	/// matrix-matrix multiplication, using matrix-vector multiplication for each column of mat
 	Matrix opBinary( string op : "*", M )( M mat ) const if( isCompatibleMatrix!M && cols == M.rows ) {
-		Matrix!( valueType, cols, M.cols ) result;
+		Matrix!( type, cols, M.cols ) result;
 		result[0] = this * mat[0];
 		result[1] = this * mat[1];
 		static if( M.cols >= 3 )  result[2] = this * mat[2];
@@ -836,7 +907,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 		assert(( m3 + m3 ) == [ [ 4.0f, 8.0f, 12.0f ], [ 16.0f, 20.0f, 24.0f ], [ 28.0f, 32.0f, 36.0f ] ] );
 		assert(( m3 / m3 ) == [ [ 1.0f, 1.0f, 1.0f ], [ 1.0f, 1.0f, 1.0f ], vec3( 1.0f, 1.0f, 1.0f ) ] );
 
-		//TODO: tests for mat4, mat34
+		//TODO: tests for mat4, mat3x4
 	}
 
 
@@ -855,7 +926,7 @@ struct Matrix( type, int numCols, int numRows ) if(( numCols > 1 ) && ( numRows 
 		m3 /= m3; assert( m3 == [ [ 1.0f, 1.0f, 1.0f ], [ 1.0f, 1.0f, 1.0f ], [ 1.0f, 1.0f, 1.0f ] ] );
 		m3 -= m3; assert( m3 == [ [ 0.0f, 0.0f, 0.0f ], [ 0.0f, 0.0f, 0.0f ], [ 0.0f, 0.0f, 0.0f ] ] );
 
-		//TODO: tests for mat4, mat34
+		//TODO: tests for mat4, mat3x4
 	}
 
 
@@ -1031,8 +1102,8 @@ auto invert( Matrix )( Matrix mat ) if( isMatrix!Matrix && Matrix.cols == Matrix
 ///////////////////////////////////////////////
 // Invert purely Translate-Rotate 4*4 matrix //
 ///////////////////////////////////////////////
-auto invertTR( Matrix )( Matrix mat ) if( isMatrix!Matrix && Matrix.cols == 4 && Matrix.rows == 4 ) {
-	Matrix result = mat.rotation.transpose;
+auto invertTR( M )( M mat ) if( isMatrix!M && M.cols == 4 && M.rows == 4 ) {
+	M result = mat.rotation.transpose;
 	result[3] = - result.opBinary!( "*", vec4 )( mat[3] );	// why does result * mat3[3] not work ???
 	return result;
 }
@@ -1065,7 +1136,7 @@ unittest {
 
 
 /// query if any entry is nan
-bool isnan( genType )( const ref genType mat ) if( isMatrix!genType && isFloatingPoint!( genType.valueType )) {
+bool isnan( M )( const ref M mat ) if( isMatrix!M && isFloatingPoint!( M.valueType )) {
 	foreach( const ref vec; mat )
 		if( vec.isnan )
 			return true;
@@ -1074,7 +1145,7 @@ bool isnan( genType )( const ref genType mat ) if( isMatrix!genType && isFloatin
 
 
 /// query if any entry is inf
-bool isinf( genType )( const ref genType mat ) if( isMatrix!genType && isFloatingPoint!( genType.valueType )) {
+bool isinf( M )( const ref M mat ) if( isMatrix!M && isFloatingPoint!( M.valueType )) {
 	foreach( const ref vec; mat )
 		if( vec.isinf )
 			return true;
@@ -1083,7 +1154,7 @@ bool isinf( genType )( const ref genType mat ) if( isMatrix!genType && isFloatin
 
 
 /// query if all entries are not nan and not inf
-bool isvalid( genType )( const ref genType mat ) if( isMatrix!genType && isFloatingPoint!( genType.valueType )) {
+bool isvalid( M )( const ref M mat ) if( isMatrix!M && isFloatingPoint!( M.valueType )) {
 	return !( mat.isinf || mat.isnan );
 }
 

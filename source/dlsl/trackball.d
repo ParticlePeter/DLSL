@@ -13,7 +13,7 @@ module dlsl.trackball;
 
 import dlsl.vector;
 import dlsl.matrix;
-//import dlsl.quaternion;
+import dlsl.quaternion;
 
 const float deg2rad = 0.0174532925199432957692369076849f;
 const float rad2deg = 57.295779513082320876798154814105f;
@@ -22,7 +22,7 @@ const float rad2deg = 57.295779513082320876798154814105f;
 
 
 private struct TrackballBase( bool ORTHOGRAPHIC ) {
-nothrow:
+nothrow @nogc:
 private:
     float   m_phi           = 0.0f;
     float   m_theta         = 0.0f;
@@ -54,10 +54,9 @@ private:
 
 
     void update() {
-        auto rotX   = mat4.rotationX( - deg2rad * m_theta );
-        auto rotY   = mat4.rotationY( - deg2rad * m_phi );
-        m_matrix    = mat4.translation( 0, 0, m_dolly ) * rotX * rotY * mat4.translation( m_target );
-        m_eye       = - m_matrix[3].xyz * m_matrix.mat3;    // cheap invert of translate-rotate-only matrix
+        auto q = quat.rotationX( - deg2rad * m_theta ) * quat.rotationY( - deg2rad * m_phi );
+        m_matrix = mat4.translation( 0, 0, m_dolly ) * q.mat4 * mat4.translation( m_target );
+        m_eye  = - m_matrix[3].xyz * m_matrix.mat3;    // cheap invert of translate-rotate-only matrix
     }
 
 
@@ -93,7 +92,7 @@ public:
     mat4 matrix()               { return m_matrix; }
     mat4 worldTransform()       { return m_matrix; }
     mat4 viewTransform()        { return m_matrix.invertTR; }
-    
+
 
     // set 2D reference point for each navigation gesture (e.g. any click)
     void reference( float x, float y )  {
@@ -159,7 +158,7 @@ public:
 
         update;
 
-        // we can and should set the eye member from the passe in eye argument
+        // we can and should set the eye member from the passed in eye argument
         // update function above is prone to precision issues
         m_eye = eye;
     }
@@ -167,6 +166,11 @@ public:
     /// look at function with nine floats representing two points and an up vector
     void lookAt( float ex, float ey, float ez, float tx = 0, float ty = 0, float tz = 0, float ux = 0, float uy = 1, float uz = 0 ) {
         lookAt( vec3( ex, ey, ez ), vec3( tx, ty, tz ), vec3( ux, uy, uz ));
+    }
+
+
+    mat3 lookingAt() {
+        return mat3( m_eye, m_eye + m_dolly * viewTransform[2].xyz, vec3( 0, 1, 0 ));
     }
 }
 
