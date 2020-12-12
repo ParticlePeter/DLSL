@@ -5,12 +5,14 @@ dlsl.dual_quaternion
 Authors: Peter Particle
 License: MIT
 
-Based on: Ben Kenwright: A Beginners Guide to Dual-Quaternions 
+Based on: Ben Kenwright: A Beginners Guide to Dual-Quaternions
 */
 
 module dlsl.dual_quaternion;
 
 public import dlsl.quaternion;
+
+
 
 /// Pre-defined quaternion of type float.
 alias DualQuaternion!( float ) dualQ;
@@ -26,6 +28,38 @@ alias isDualQ = isDualQuaternion;
 /// Params:
 ///  type = all values get stored as this type
 struct DualQuaternion( type ) {
+
+    nothrow @nogc:
+
+    /// Returns the current matrix formatted as flat string.
+    char[] toString( char[] buffer ) {
+        import core.stdc.stdio : sprintf;
+
+        size_t s = 0;
+        s += sprintf( buffer.ptr + s, "[ ");
+        s += r.toString( buffer[ s .. $ ] ).length;
+
+        s += sprintf( buffer.ptr + s, ", ");
+        s += d.toString( buffer[ s .. $ ] ).length;
+
+        s += sprintf( buffer.ptr + s, " ]");
+
+        return buffer[ 0 .. s ];
+    }
+
+
+    pure nothrow @nogc:
+
+    /// Returns the pointer to the stored values as OpenGL requires it.
+    /// Note this will return a pointer to a $( RED column - major ) matrix,
+    /// $( RED this is the OpneGL convention and expected in programs via Uniforms or UBOs ).
+    auto ptr() {
+        return data.ptr;
+    }
+
+
+    pure nothrow @nogc @safe:
+
     union {
         type[8] data;
         struct {
@@ -36,19 +70,12 @@ struct DualQuaternion( type ) {
 
     alias type valueType;   /// Holds the internal type of the vector.
     alias Quaternion!( type ) quaternionType;
-   
 
-    /// Returns a pointer to the data in memory, it starts with the w coordinate.
-    @property auto ptr()        {  return data.ptr;  }
-
-    /// Returns the current dual quternion formatted as string, useful for printing
-    @property string asString() { import std.string : format; return format( "%s", data ); }
-    alias asString toString;
 
     /// Returns an identity vector ( x=0, y=0, z=0, w=1 ).
-    static @property DualQuaternion identity() {
-        return DualQuaternion( 
-            cast( type )0, cast( type )0, cast( type )0, cast( type )1, 
+    static DualQuaternion identity() {
+        return DualQuaternion(
+            cast( type )0, cast( type )0, cast( type )0, cast( type )1,
             cast( type )0, cast( type )0, cast( type )0, cast( type )0
         );
     }
@@ -58,7 +85,7 @@ struct DualQuaternion( type ) {
     /// first four the real part, rotation quaternion with last value being the w value
     /// last four being the dual, translation part
     this()(
-        valueType rx, valueType ry, valueType rz, valueType rw, 
+        valueType rx, valueType ry, valueType rz, valueType rw,
         valueType dx, valueType dy, valueType dz, valueType dw
         ) {
         data[0] = rx; data[1] = ry; data[2] = rz; data[3] = rw;
@@ -92,7 +119,7 @@ struct DualQuaternion( type ) {
         return result;
     }
 
-    // Multiplication order - left to right 
+    // Multiplication order - left to right
     //static DualQuaternion operator * ( DualQuaternion lhs, DualQuaternion rhs ) {
     //    return DualQuaternion( rhs.m_real * lhs.m_real, rhs.m_dual * lhs.m_real + rhs.m_real * lhs.m_dual );
     //}
@@ -106,9 +133,9 @@ struct DualQuaternion( type ) {
         auto result = this;
         result[] *= s;
         return result;
-        //return DualQuaternion( 
+        //return DualQuaternion(
         //  s * r.x, s * r.y, s * r.z, s * r.w,
-        //  s * d.x, s * d.y, s * d.z, s * d.w  
+        //  s * d.x, s * d.y, s * d.z, s * d.w
         //);
     }
 
@@ -128,9 +155,11 @@ struct DualQuaternion( type ) {
 }
 
 
+pure nothrow @nogc @safe:
+
 /// Convenience functions returning the vector as corresponding matrices
 /// Params:
-///     q = convert quternion 
+///     q = convert quternion
 /// Returns: mat4 / mat4x4, mat4x3
 import dlsl.matrix;
 auto toMat4(   DQ )( DQ dq ) if( isDualQuaternion!DQ && is( DQ.valueType : float )) { return mat4(   dq ); }

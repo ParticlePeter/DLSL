@@ -22,7 +22,9 @@ const float rad2deg = 57.295779513082320876798154814105f;
 
 
 private struct TrackballBase( bool ORTHOGRAPHIC ) {
-nothrow @nogc:
+
+pure nothrow @nogc @safe:
+
 private:
     float   m_phi           = 0.0f;
     float   m_theta         = 0.0f;
@@ -55,7 +57,7 @@ private:
 
     void update() {
         auto q = quat.rotationX( - deg2rad * m_theta ) * quat.rotationY( - deg2rad * m_phi );
-        m_matrix = mat4.translation( 0, 0, m_dolly ) * q.mat4 * mat4.translation( m_target );
+        m_matrix = mat4.translation( 0, 0, m_dolly ) * q.toMat4 * mat4.translation( m_target );
         m_eye  = - m_matrix[3].xyz * m_matrix.mat3;    // cheap invert of translate-rotate-only matrix
     }
 
@@ -177,6 +179,8 @@ public:
 alias Trackball = TrackballBase!false;
 alias TrackballOrthographic = TrackballBase!true;
 
+
+pure nothrow @nogc @safe:
 
 /// look at function with two points and an up vector, returns the view matrix (camera position and rotation matrix)
 auto lookAtView( vec3 eye, vec3 target = vec3( 0 ), vec3 up = vec3( 0, 1, 0 )) {

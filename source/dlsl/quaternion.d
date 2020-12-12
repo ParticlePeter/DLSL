@@ -13,8 +13,6 @@ module dlsl.quaternion;
 
 import std.conv : to;
 import std.math : asin, atan2, cos, sin, sqrt;
-import std.format : /*s*/format;
-import std.traits : isFloatingPoint, isArray;
 
 import dlsl.matrix;
 public import dlsl.vector;
@@ -32,22 +30,31 @@ private void isQuaternionImpl( T )( Quaternion!( T ) q )  {}
 /// Params:
 ///  type = all values get stored as this type
 struct Quaternion( type ) {
+
+    nothrow @nogc:
+
+    /// Returns the current quternion formatted as string, useful for printing
+    char[] toString( char[] buffer ) {
+        assert( buffer.length >= 64, "At least 64 chars buffer capacity required!" );
+        return vector.toString( buffer );
+    }
+
+
+    pure nothrow @nogc:
+
+    /// Returns a pointer to the vector in memory
+    auto ptr() {
+        return vector.data.ptr;
+    }
+
+
+    pure nothrow @nogc @safe:
+
     Vector!( type, 4 ) vector;
 
     alias vector this;      /// The Quaternion can be treated as a vector, which cen be treated as an array
     alias type valueType;   /// Holds the internal type of the vector.
 
-
-    /// Returns a pointer to the vector in memory
-    @property auto ptr() {
-        return vector.data.ptr;
-    }
-
-    /// Returns the current quternion formatted as string, useful for printing
-    @property auto toString( char[] buffer ) {
-        assert( buffer.length >= 64, "At least 64 chars buffer capacity required!" );
-        return vector.toString( buffer );
-    }
 
     /// Returns an identity vector ( x=0, y=0, z=0, w=1 ).
     static @property Quaternion identity() {
@@ -413,6 +420,7 @@ struct Quaternion( type ) {
 // free functions akin to glsl //
 /////////////////////////////////
 
+pure nothrow @nogc @safe:
 
 /// Returns true if all values are not nan and finite, otherwise false.
 bool isFinite( Q )( const ref Q q ) if( isQuaternion!Q ) {
