@@ -360,106 +360,6 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 )) {
         assert( vec3d( vec3( 1.0, 2.0, 3.0 )) == vec3d( 1.0, 2.0, 3.0 ));
     }
 
-    /// Build swizzle setter and getter properties
-    /*
-    import std.conv : to;
-    enum string[dimension] comp = ( [ "x", "y", "z", "w" ] )[ 0 .. dimension ];
-    enum string[dimension] fill = ( [ "", " ", "  ", "   " ] )[ 0 .. dimension ];
-
-    /// generates one swizzle setter property for a given permutation
-    static string genSetSwizz( int[] idx ) {
-        string property;
-        string funcBody;
-        foreach( i; 0 .. idx.length ) {
-            property ~= comp[ idx[i] ];
-            funcBody ~= "data[" ~ to!string( idx[i] ) ~ "] = vec[" ~ to!string( i ) ~ "]; ";
-        }
-        string funcHead = "( Vector!( valueType, " ~ to!string( idx.length ) ~ " ) vec ) { ";
-        return "void " ~ fill[ dimension - idx.length ] ~ property ~ funcHead ~ funcBody ~ "}\n";
-    }
-
-    /// generates all possible swizzle setter properties for the default permutation ( e.g. [0,1,2,3] )
-    static string setSwizz( int[] idx ) {
-        string result;
-        //if ( idx.length == 1 ) {
-        //  auto funcBody = "( valueType val ) { " ~ "data[" ~ to!string( idx[0] ) ~ "] = val; }\n";
-        //  result = "void " ~ fill[ dimension - idx.length ] ~ comp[ idx[0] ] ~ funcBody;
-        //}
-        if ( idx.length == 2 ) {
-            foreach( i; 0 .. 2 ) {
-                result ~= "\n" ~ setSwizz( [ idx[ i ] ] );
-                result ~= genSetSwizz( [ idx[ i ], idx[ (i+1) % 2 ] ] );
-            }
-        }
-        else if ( idx.length == 3 ) {
-            foreach( i; 0 .. 3 ) {
-                result ~= "\n" ~ setSwizz( [ idx[ i ] ] );
-                foreach( j; 0 .. 2 )  result ~= genSetSwizz( [ idx[ i ], idx[ ( i + j + 1 ) % 3 ] ] );
-                foreach( j; 0 .. 2 )  result ~= genSetSwizz( [ idx[ i ], idx[ ( i + j + 1 ) % 3 ], idx[ ( i + ( j + 1 ) % 2 + 1 ) % 3 ] ] );
-            }
-        }
-        else if ( idx.length == 4 ) {
-            foreach( i; 0 .. 4 ) {
-                result ~= "\n" ~ setSwizz( [ idx[ i ] ] );
-                foreach( j; 0 .. 3 ) {
-                    result ~= genSetSwizz( [ idx[ i ], idx[ ( i + j + 1 ) % 4 ] ] );
-                    foreach( k; 0 .. 2 )  result ~= genSetSwizz( [ idx[ i ], idx[ ( i + j + 1 ) % 4 ], idx[ ( i + ( j + k + 1 ) % 3 + 1 ) % 4 ] ] );
-                    foreach( k; 0 .. 2 )  result ~= genSetSwizz( [ idx[ i ], idx[ ( i + j + 1 ) % 4 ], idx[ ( i + ( j + k + 1 ) % 3 + 1 ) % 4 ], idx[ ( i + ( j + ( k + 1 ) % 2 + 1 ) % 3 + 1 ) % 4 ] ] );
-                }
-            }
-        }
-        return result;
-    }
-
-    enum string[dimension] aCol = ( [ "r", "g", "b", "a" ] )[ 0 .. dimension ];
-    enum string[dimension] aTex = ( [ "s", "t", "p", "q" ] )[ 0 .. dimension ];
-
-    /// Generates all possible swizzle getter properties, creates also property aliases e.g. rgba
-    static string getSwizz( string component, string alias1, string alias2, string r, int term ) {
-        string returnDim = to!string( dimension - term + 1 );
-        string returnType = "auto ";
-        string returnPrefix = "()  " ~ fill[ term - 1 ] ~ "const {  return ";
-        string result;
-
-        foreach( i; 0 .. dimension ) {
-            string property = component ~ comp[ i ];
-            string aliColor = alias1 ~ aCol[ i ];
-            string aliTexST = alias2 ~ aTex[ i ];
-
-            string returnData = r ~ "data[" ~ to!string( i ) ~ "]";
-            string returnString = returnPrefix ~ (
-                term == dimension
-                ?   returnData ~ ";  }"
-                :   "Vector!( valueType, " ~ returnDim ~ " )( " ~ returnData ~ " );  }"
-            );
-
-            // skip single letter properties, they are accessible through usual member
-            if( property.length == 1 ) {
-                result ~= getSwizz( property, aliColor, aliTexST, returnData ~ ", ", term - 1 );
-            } else {
-                // append aliases
-                result ~= "alias " ~ aliColor ~ fill[ term - 1 ] ~ " = " ~ property ~ fill[ term - 1 ] ~ "; ";
-                result ~= "alias " ~ aliTexST ~ fill[ term - 1 ] ~ " = " ~ property ~ fill[ term - 1 ] ~ "; ";
-
-                // skip vec2.xy, vec3.xyz, vec4.xyzw which all return identity
-                if      ( dimension == 2 && property == "xy"   )  result ~= returnType ~ property ~ "()  const {  return this;  }\n";
-                else  if( dimension == 3 && property == "xyz"  )  result ~= returnType ~ property ~ "()  const {  return this;  }\n";
-                else  if( dimension == 4 && property == "xyzw" )  result ~= returnType ~ property ~ "()  const {  return this;  }\n";
-                else {
-                    result ~= returnType ~ property ~ returnString ~ "\n";
-                    if ( term > 1 )  result ~= getSwizz( property, aliColor, aliTexST, returnData ~ ", ", term - 1 );
-                }
-            }
-        }
-        return result;
-    }
-
-    enum int[ dimension ] idcs = ( [ 0, 1, 2, 3 ] )[ 0 .. dimension ];
-    mixin( setSwizz( idcs ));
-    mixin( getSwizz( "", "", "", "", dimension ));
-    //pragma( msg, setSwizz( idcs ));
-    //pragma( msg, getSwizz( "", "", "", "", dimension ));
-    //*/
 
     // another swizzle variant based on opDispatch, source: https://github.com/d-gamedev-team/gfm/blob/master/math/gfm/math/vector.d#L238
     // drawback is that lib is always recompiled if any swizzle operator changes, implementation at bottom of file
@@ -505,9 +405,6 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 )) {
         //v3.yx = [ 1, 2 ];
         assert( v3 == [ 2, 1, 0 ] );
     }
-//*/
-    /// Updates the vector with the values from other.
-    //void update( Vector!( valueType, dimension ) vec ) {  data = vec.data;     }
 
     /// Unittest for setting Values
     unittest {
@@ -749,7 +646,7 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 )) {
         else {  assert( false );  }
     }
 
-    // another swizzle variant based on opDispatch, source: https://github.com/d-gamedev-team/gfm/blob/master/math/gfm/math/vector.d#L238
+    // swizzling based on opDispatch, source: https://github.com/d-gamedev-team/gfm/blob/master/math/gfm/math/vector.d#L238
     // drawback is that lib is always recompiled if any swizzle operator changes, implementation at bottom of file
 
     /// Implements swizzling.
@@ -882,11 +779,6 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 )) {
         else static if( op.length == 3 )   enum swizzleTuple = [ swizzleIndex!( op[0] ), swizzleIndex!( op[1] ), swizzleIndex!( op[2] ) ];
         else static if( op.length == 4 )   enum swizzleTuple = [ swizzleIndex!( op[0] ), swizzleIndex!( op[1] ), swizzleIndex!( op[2] ), swizzleIndex!( op[3] ) ];
     }
-
-    //template swizzleTuple( string op ) {
-    //    static if( op.length == 0 ) enum swizzleTuple = [];
-    //    else enum swizzleTuple = [ swizzleIndex!( op[0] ) ] ~ swizzleTuple!( op[ 1 .. op.length ] );
-    //}
 }
 
 
