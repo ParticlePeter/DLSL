@@ -12,8 +12,8 @@ All static methods are strongly pure.
 module dlsl.vector;
 
 import std.math : sqrt;
-import std.format : sformat;
-import std.traits : isFloatingPoint, isArray;
+import std.traits : isFloatingPoint, isNumeric;
+
 
 
 /// Pre-defined vector types
@@ -65,6 +65,43 @@ private void isVectorImpl( T, int dim )( Vector!( T, dim ) vec ) {}
 /// alias Vector!(real, 2) vec2r;
 /// ---
 struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 )) {
+
+    nothrow @nogc:
+
+    /// Returns the current vector formatted as char[] slice of the passed in buffer excluding terminating \0.
+    /// The terminator is still part of the buffer to be able to use write(ln) as well as printf using buffer.ptr
+    char[] toString( char[] buffer ) {
+        assert( buffer.length >= dim * 16, "At least dimension * 16 chars buffer capacity required!" );
+        import core.stdc.stdio : sprintf;
+
+        static if( __traits( isFloating, type )) {
+                 static if( dim == 2 )  return buffer[ 0 .. sprintf( buffer.ptr, "[ %f, %f ]",         x, y ) ];
+            else static if( dim == 3 )  return buffer[ 0 .. sprintf( buffer.ptr, "[ %f, %f, %f ]",     x, y, z ) ];
+            else static if( dim == 4 )  return buffer[ 0 .. sprintf( buffer.ptr, "[ %f, %f, %f, %f ]", x, y, z, w ) ];
+        }
+        else static if( __traits( isUnsigned, type )) {
+                 static if( dim == 2 )  return buffer[ 0 .. sprintf( buffer.ptr, "[ %u, %u ]",         x, y ) ];
+            else static if( dim == 3 )  return buffer[ 0 .. sprintf( buffer.ptr, "[ %u, %u, %u ]",     x, y, z ) ];
+            else static if( dim == 4 )  return buffer[ 0 .. sprintf( buffer.ptr, "[ %u, %u, %u, %u ]", x, y, z, w ) ];
+        }
+        else static if( __traits( isIntegral, type )) {
+                 static if( dim == 2 )  return buffer[ 0 .. sprintf( buffer.ptr, "[ %i, %i ]",         x, y ) ];
+            else static if( dim == 3 )  return buffer[ 0 .. sprintf( buffer.ptr, "[ %i, %i, %i ]",     x, y, z ) ];
+            else static if( dim == 4 )  return buffer[ 0 .. sprintf( buffer.ptr, "[ %i, %i, %i, %i ]", x, y, z, w ) ];
+        }
+    }
+
+
+    pure nothrow @nogc:
+
+    /// Returns a pointer to the coordinates
+    auto ptr() {
+        return data.ptr;
+    }
+
+
+    pure nothrow @nogc @safe:
+
     union {                             /// access array data with vector properties
         type[ dim ] data;               /// Holds all coordinates, length conforms dimension
         struct {                        /// access via x, y, z, w
@@ -115,34 +152,6 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 )) {
         assert( v4 == [ 0.0f, 1.0f, 2.0f, 0.3f ] );
     }
 
-    /// Returns a pointer to the coordinates
-    @property auto ptr() {
-        return data.ptr;
-    }
-
-    /// Returns the current vector formatted as cstring terminated char[]
-    @property auto toString( char[] buffer ) {
-        assert( buffer.length >= dim * 16, "At least dimension * 16 chars buffer capacity required!" );
-        import std.string : sformat;
-        auto result = buffer.sformat!"%s"( data );
-        if( result.length == buffer.length ) {  // if buffer is completely consumed
-            buffer[ $-2 ] = ']';                // set the last but one character to ]
-            buffer[ $-1 ] = '\0';               // and the final one as cstring terminator \0
-        } else {
-            buffer[ result.length ] = '\0';     // otherwise set the first char after the slice result to \0
-        }
-        return result;
-
-        /* // Todo(pp): re-implement with fprintf but keep formatting of sformat
-        import core.stdc.stdio : sprintf;
-             static if( dim == 2 )  sprintf( buffer.ptr, "[%f, %f]\0",         x, y );
-        else static if( dim == 3 )  sprintf( buffer.ptr, "[%f, %f, %f]\0",     x, y, z );
-        else                        sprintf( buffer.ptr, "[%f, %f, %f, %f]\0", x, y, z, w );
-        return buffer;
-        */
-    }
-
-    @safe pure nothrow :
     template isCompatibleVector( T ) {  enum isCompatibleVector = is( typeof( isCompatibleVectorImpl( T.init )));  }
     static void isCompatibleVectorImpl( vt, int dim )( Vector!( vt, dim ) vec ) if( dim <= dimension ) {}           // implicit valueType conversion
 
@@ -170,18 +179,32 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 )) {
             data[i] = head;
             construct!( i + 1 )( tail );
         } else static if ( isDynamicArray!T ) {
-            static assert(( Tail.length == 0 ) && ( i == 0 ), "dynamic array can not be passed together with other arguments" );
-            data = head;
+            version( D_BetterC ) {
+                pragma( msg, "\nUsing -betterC, it's not possible to initialize from (statically defined) dynamic arrays!\n" );
+            } else {
+                static assert(( Tail.length == 0 ) && ( i == 0 ), "dynamic array can not be passed together with other arguments" );
+                static if( is( type == typeof( head[0] ))) data = head;
+                else foreach( j; 0 .. head.length ) data[ i + j ] = head[ j ];
+            }
         } else static if( isStaticArray!T ) {
-            data[ i .. i + T.length ] = head;
+            static if( is( type == typeof( head[0] ))) {
+                data[ i .. i + T.length ] = head;
+                construct!( i + T.length )( tail );
+            } else {
+                foreach( j; 0 .. T.length )
+                    data[ i + j ] = head[ j ];
+                construct!( i + T.length )( tail );
+            }
             construct!( i + T.length )( tail );
         } else static if ( isCompatibleVector!T ) {
             data[ i .. i + T.dimension ] = head.data;
             construct!( i + T.dimension )( tail );
         } else {
-            char[128] formatBuffer;
-            auto formatString = sformat( formatBuffer, "Vector constructor argument must be of type %s or Vector, not %s", valueType.stringof, T.stringof );
-            static assert( false, formatString );
+            //char[128] formatBuffer;
+            //import core.stdc.stdio : sprintf;
+            //auto formatString = formatBuffer.ptr.sprintf( "Vector constructor argument must be of type %s or Vector, not %s", valueType.stringof, T.stringof );
+            pragma( msg, "Vector constructor argument must be of type ", valueType, " or Vector, but not ", T );
+            static assert( false );
         }
     }
 
@@ -263,7 +286,7 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 )) {
     static if ( isFloatingPoint!valueType ) {
         bool opCast( T : bool )() const {  return ok;  }
         import std.math : isNaN, isInfinity;
-        @property bool ok() const {
+        bool ok() const {
             foreach( ref val; data ) {
                 if ( isNaN( val ) || isInfinity( val ))  return false;
             }
@@ -338,6 +361,7 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 )) {
     }
 
     /// Build swizzle setter and getter properties
+    /*
     import std.conv : to;
     enum string[dimension] comp = ( [ "x", "y", "z", "w" ] )[ 0 .. dimension ];
     enum string[dimension] fill = ( [ "", " ", "  ", "   " ] )[ 0 .. dimension ];
@@ -351,7 +375,7 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 )) {
             funcBody ~= "data[" ~ to!string( idx[i] ) ~ "] = vec[" ~ to!string( i ) ~ "]; ";
         }
         string funcHead = "( Vector!( valueType, " ~ to!string( idx.length ) ~ " ) vec ) { ";
-        return "@property void " ~ fill[ dimension - idx.length ] ~ property ~ funcHead ~ funcBody ~ "}\n";
+        return "void " ~ fill[ dimension - idx.length ] ~ property ~ funcHead ~ funcBody ~ "}\n";
     }
 
     /// generates all possible swizzle setter properties for the default permutation ( e.g. [0,1,2,3] )
@@ -359,7 +383,7 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 )) {
         string result;
         //if ( idx.length == 1 ) {
         //  auto funcBody = "( valueType val ) { " ~ "data[" ~ to!string( idx[0] ) ~ "] = val; }\n";
-        //  result = "@property void " ~ fill[ dimension - idx.length ] ~ comp[ idx[0] ] ~ funcBody;
+        //  result = "void " ~ fill[ dimension - idx.length ] ~ comp[ idx[0] ] ~ funcBody;
         //}
         if ( idx.length == 2 ) {
             foreach( i; 0 .. 2 ) {
@@ -393,7 +417,7 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 )) {
     /// Generates all possible swizzle getter properties, creates also property aliases e.g. rgba
     static string getSwizz( string component, string alias1, string alias2, string r, int term ) {
         string returnDim = to!string( dimension - term + 1 );
-        string returnType = "@property auto ";
+        string returnType = "auto ";
         string returnPrefix = "()  " ~ fill[ term - 1 ] ~ "const {  return ";
         string result;
 
@@ -435,9 +459,12 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 )) {
     mixin( getSwizz( "", "", "", "", dimension ));
     //pragma( msg, setSwizz( idcs ));
     //pragma( msg, getSwizz( "", "", "", "", dimension ));
+    //*/
 
-    // another swizzle variant based on opDispatch, source: http://www.mmartins.me/view/2015/9/27/vector-swizzle-in-d
+    // another swizzle variant based on opDispatch, source: https://github.com/d-gamedev-team/gfm/blob/master/math/gfm/math/vector.d#L238
     // drawback is that lib is always recompiled if any swizzle operator changes, implementation at bottom of file
+
+
 
 
     // Unittest swizzle setter
@@ -554,7 +581,7 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 )) {
 
 
     /// Returns the euclidean length of the vector
-    @property auto length() const { // Required to overwrite array.length
+    auto length() const { // Required to overwrite array.length
         return .length( this );         // .operator calls free module scope length function
     }
 
@@ -639,8 +666,8 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 )) {
         assert(( v4 + vec4( 3.0f, 1.0f, - 1.0f, - 3.0f )).data == [ 4.0f, 4.0f, 4.0f, 4.0f ] );
         assert(( v4 - vec4( 1.0f, 3.0f, 5.0f, 7.0f )).data == [ 0.0f, 0.0f,  0.0f,  0.0f ] );
         assert(( v4 * vec4( 2.0f, 2.0f, 2.0f, 2.0f ))  == vec4( 2.0f, 6.0f, 10.0f, 14.0f ));
-
     }
+
 
     /// Op= Operation with a scalar
     void opOpAssign( string op )( valueType val ) if (( op == "+" ) || ( op == "-" ) || ( op == "*" ) || ( op == "/" )) {
@@ -692,7 +719,13 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 )) {
     //}
 
     /// Comparisson Operator
-    const bool opEquals( T )( T vec ) if ( T.dimension == dimension ) {  return data == vec.data;  }
+    const bool opEquals( T )( T vec ) if ( T.dimension == dimension ) {
+                                    if( data[0] != /*cast( type )*/vec.data[0] ) return false;
+                                    if( data[1] != /*cast( type )*/vec.data[1] ) return false;
+        static if( dimension >= 3 ) if( data[2] != /*cast( type )*/vec.data[2] ) return false;
+        static if( dimension == 4 ) if( data[3] != /*cast( type )*/vec.data[3] ) return false;
+        return true;
+    }
 
     /// Unittest Comparisson Operator
     unittest {
@@ -715,6 +748,145 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 )) {
         if ( vec4( 1.0f )) {}
         else {  assert( false );  }
     }
+
+    // another swizzle variant based on opDispatch, source: https://github.com/d-gamedev-team/gfm/blob/master/math/gfm/math/vector.d#L238
+    // drawback is that lib is always recompiled if any swizzle operator changes, implementation at bottom of file
+
+    /// Implements swizzling.
+    ///
+    /// Example:
+    /// ---
+    /// vec4i vi = [4, 1, 83, 10];
+    /// assert(vi.zxxyw == [83, 4, 4, 1, 10]);
+    /// ---
+    @nogc auto opDispatch( string op, U = void )() pure const nothrow if( isValidSwizzle!( op )) {
+        //pragma( msg, "Swizzle is Valid: ", op );
+        Vector!( type, op.length ) result = void;
+        //pragma( msg, "Typeof Result", typeof( result ).stringof );
+        enum indexTuple = swizzleTuple!op;
+        //pragma( msg, "Index Tuple: ", indexTuple );
+        foreach( i, index; indexTuple )
+            result.data[ i ] = data[ index ];
+        return result;
+    }
+
+    /// Support swizzling assignment like in shader languages.
+    ///
+    /// Example:
+    /// ---
+    /// vec3f v = [0, 1, 2];
+    /// v.yz = v.zx;
+    /// assert(v == [0, 2, 0]);
+    /// ---
+    @nogc void opDispatch( string op, RHS )( RHS rhs ) pure
+    if( isValidSwizzleOperand!( op, RHS ) &&
+    is( typeof( Vector!( type, op.length )( rhs )))) {  // can be converted to a small vector of the right size
+        Vector!( type, op.length ) array = rhs;         // convert atomar type (float, int, etc. ) into array with one element
+        enum indexTuple = swizzleTuple!op;
+        foreach( i, index; indexTuple )
+            data[ index ] = array[ i ];
+    }
+
+    private:
+
+    template saticArrayCount( T ) {
+        static if( is( T : A[n], A, size_t n ))
+             enum size_t saticArrayCount = n;
+        else enum size_t saticArrayCount = 0;
+    }
+
+    template isValidSwizzleOperand( string op, RHS ) {
+        //pragma( msg, "isValidSwizzleUnique!op : ", isValidSwizzleUnique!op );
+        //pragma( msg, "isScalar!RHS            : ", __traits( isScalar, RHS ));
+        //pragma( msg, "saticArrayCount         : ", saticArrayCount!RHS );
+        //pragma( msg, "op.length               : ", op.length );
+        //pragma( msg, "isSameLength            : ", saticArrayCount!RHS == op.length );
+        //pragma( msg, "" );
+
+
+        enum bool isValidSwizzleOperand = (
+            isValidSwizzleUnique!op && (            // reject lhs.xyy
+                __traits( isScalar, RHS ) ||        // accept lhs.yzw = rhs.x
+                saticArrayCount!RHS == op.length    // accept lhs.yzw = rhs.xzy ( rhs can also be a static array[3] )
+            )                                       // reject lhs.yzw = rhs.xz
+        );
+    }
+
+    template isValidSwizzle( string op, int lastSwizzleClass = -1 ) {
+        enum len = op.length;
+        static if( len == 0 ) enum bool isValidSwizzle = true;              // terminator
+        else static if( lastSwizzleClass == -1 && ( len < 2 || len > 4 )) {
+            //pragma( msg, "Only 2, 3 and 4 swizzle operators supported!" );
+            enum bool isValidSwizzle = false;
+        } else {
+            enum bool indexValid = swizzleIndex!( op[0] ) != -1;
+            static if( !indexValid )
+                pragma( msg, "Invalid swizzle element: ", op[0] );
+            enum int  swizzleClass = swizzleClassify!( op[0] );
+            enum bool classValid = ( lastSwizzleClass == -1 || ( swizzleClass == lastSwizzleClass ));
+            static if( !classValid )
+                pragma( msg, "Swizzle elements must be from one swizzle class! Classe: 'xyzw', 'rgba', 'stpq'." );
+
+            enum bool isValidSwizzle = classValid && indexValid && isValidSwizzle!( op[ 1 .. len ], swizzleClass );
+        }
+    }
+
+    template searchElement( char c, string s ) {
+        static if( s.length == 0 ) {
+            enum bool result = false;
+        } else {
+            enum string tail = s[ 1 .. s.length ];
+            enum bool result = ( s[0] == c ) || searchElement!( c, tail ).result;
+        }
+    }
+
+    template hasNoDuplicates( string s ) {
+        static if( s.length == 1 ) {
+            enum bool result = true;
+        } else {
+            enum tail = s[ 1 .. s.length ];
+            enum bool result = !( searchElement!( s[0], tail ).result ) && hasNoDuplicates!( tail ).result;
+        }
+    }
+
+    // true if the swizzle has at the maximum one time each letter
+    template isValidSwizzleUnique( string op ) {
+        static if ( isValidSwizzle!op ) {
+            enum isValidSwizzleUnique = hasNoDuplicates!op.result;
+            static if( !isValidSwizzleUnique )
+                pragma( msg, "Left hand swizzle operator must have unique swizzle elements!" );
+        } else {
+            enum bool isValidSwizzleUnique = false;
+        }
+    }
+
+
+
+    template swizzleIndex( char c ) {
+             static if(             ( c == 'x' || c == 'r' || c == 's' ))  enum swizzleIndex = 0;
+        else static if(             ( c == 'y' || c == 'g' || c == 't' ))  enum swizzleIndex = 1;
+        else static if( dim >= 3 && ( c == 'z' || c == 'b' || c == 'p' ))  enum swizzleIndex = 2;
+        else static if( dim == 4 && ( c == 'w' || c == 'a' || c == 'q' ))  enum swizzleIndex = 3;
+        else enum swizzleIndex = -1;
+    }
+
+    template swizzleClassify( char c ) {
+             static if( c == 'x' || c == 'y' || c == 'z' || c == 'w' )  enum swizzleClassify = 0;
+        else static if( c == 'r' || c == 'g' || c == 'b' || c == 'a' )  enum swizzleClassify = 1;
+        else static if( c == 's' || c == 't' || c == 'p' || c == 'q' )  enum swizzleClassify = 2;
+        else enum swizzleClassify = -1;
+    }
+
+    template swizzleTuple( string op ) {
+             static if( op.length == 2 )   enum swizzleTuple = [ swizzleIndex!( op[0] ), swizzleIndex!( op[1] ) ];
+        else static if( op.length == 3 )   enum swizzleTuple = [ swizzleIndex!( op[0] ), swizzleIndex!( op[1] ), swizzleIndex!( op[2] ) ];
+        else static if( op.length == 4 )   enum swizzleTuple = [ swizzleIndex!( op[0] ), swizzleIndex!( op[1] ), swizzleIndex!( op[2] ), swizzleIndex!( op[3] ) ];
+    }
+
+    //template swizzleTuple( string op ) {
+    //    static if( op.length == 0 ) enum swizzleTuple = [];
+    //    else enum swizzleTuple = [ swizzleIndex!( op[0] ) ] ~ swizzleTuple!( op[ 1 .. op.length ] );
+    //}
 }
 
 
@@ -723,7 +895,7 @@ struct Vector( type, int dim ) if (( dim >= 2 ) && ( dim <= 4 )) {
 // free functions akin to glsl //
 /////////////////////////////////
 
-@safe pure nothrow @nogc:
+pure nothrow @nogc @safe:
 
 /// Vector dot product
 V.valueType dot( V )( in V a, in V b ) if ( isVector!V ) {
@@ -885,12 +1057,11 @@ bool isvalid( V )( const ref V vec ) if( isVector!V && isFloatingPoint!( V.value
 }
 
 
-bool almostEqual(T, S)(T a, S b, float epsilon = 0.000001f) if(isVector!T && isVector!S && T.dimension == S.dimension) {
-    foreach(i; 0..T.dimension) {
-        if(!almostEqual(a.vector[i], b.vector[i], epsilon)) {
+bool almostEqual( T, S )( T a, S b, float epsilon = 0.000001f ) if( isVector!T && isVector!S && T.dimension == S.dimension ) {
+    import dlsl.math : almostEqual;
+    foreach( i; 0 .. T.dimension)
+        if( !dlsl.math.almostEqual( a.vector[i], b.vector[i], epsilon ))
             return false;
-        }
-    }
     return true;
 }
 
@@ -911,7 +1082,7 @@ unittest {
 /*  private enum vec_swizz_get_xyzw = "xyzw";
     private enum vec_swizz_get_rgba = "rgba";
     private enum vec_swizz_get_stpq = "stpq";
-    @property auto opDispatch(string swizzle)() if (swizzle.length > 0 && swizzle.length < 5) {
+    auto opDispatch(string swizzle)() if (swizzle.length > 0 && swizzle.length < 5) {
         import std.string : indexOf, join;
 
         static if (swizzle.length == 1) {
@@ -930,7 +1101,7 @@ unittest {
             return data[index];
         } else {
             import std.conv : to;
-            import std.array : array;
+            //import std.array : array;
             import std.algorithm : map;
             pragma( msg, "length > 1, ", swizzle );
             static if       (vec_swizz_get_xyzw.indexOf(swizzle[0]) >= 0) {
