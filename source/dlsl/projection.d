@@ -44,7 +44,7 @@ in {
 	assert( top - bottom != 0 );
 	assert( far - near != 0 );
 }
-body {
+do {
 	mat4 result;
 	result.clear( 0 );
 	result.data[ 0 ][ 0 ] = ( 2 * near ) / ( right - left );
@@ -71,7 +71,7 @@ in {
 	assert( top - bottom != 0 );
 	assert( far - near != 0 );
 }
-body {
+do {
 	mat4 result;
 	result.clear( 0 );
 
@@ -86,15 +86,15 @@ body {
 	return result;
 }
 
-// ( 2 ) and ( 3 ) say this one is correct
+
 /// Construct an orthographic matrix ( 4x4 and floating - point matrices only ).
-mat4 glOrthographic( float left, float right, float bottom, float top, float near, float far )
+mat4 glOrthographic( float left, float right, float bottom, float top, float near = -1.0, float far = 1.0 )
 in {
 	assert( right - left != 0 );
 	assert( top - bottom != 0 );
 	assert( far - near != 0 );
 }
-body {
+do {
 	mat4 result = void;
 	result.clear( 0 );
 
@@ -109,7 +109,7 @@ body {
 	return result;
 }
 
-// ( 1 ) and ( 2 ) say this one is correct
+
 /// Returns an inverse orographic matrix ( 4x4 and floating - point matrices only ).
 mat4 glInverseOrthographic( float left, float right, float bottom, float top, float near, float far ) {
 	mat4 result;
@@ -204,3 +204,59 @@ mat4 vkPerspective( float fovy, float aspect, float near, float far ) {
 
 	return result;
 }
+
+
+
+/// Construct an orthographic matrix ( 4x4 and floating - point matrices only ).
+mat4 vkOrthographic( float left, float right, float bottom, float top, float near, float far )
+in {
+	assert( right - left != 0 );
+	assert( top - bottom != 0 );
+	assert( far - near != 0 );
+}
+do {
+	mat4 result = void;
+	result.clear( 0 );
+
+	result.data[ 0 ][ 0 ] = 2.0f / ( right - left );
+	result.data[ 1 ][ 1 ] = 2.0f / ( bottom - top );
+	result.data[ 2 ][ 2 ] = 1.0f / ( near - far );
+	result.data[ 3 ][ 0 ] = - ( right + left ) / ( right - left );
+	result.data[ 3 ][ 1 ] = - ( bottom + top ) / ( bottom - top );
+	result.data[ 3 ][ 2 ] = near / ( near - far );
+	result.data[ 3 ][ 3 ] = 1.0f;
+
+	return result;
+}
+
+
+/// Construct an orthographic matrix from scale and aspect ( 4x4 and floating - point matrices only ).
+mat4 vkOrthographic( float scale, float aspect = 1.0f, float near = -1.0, float far = 1.0 ) {
+	float half_w = 0.5 * scale * aspect;
+	float half_h = 0.5 * scale;
+	return vkOrthographic( - half_w, half_w, - half_h, half_h, near, far );
+
+}
+
+/*
+in {
+	assert( scale  > 0.0f );
+	assert( aspect > 0.0f );
+	assert( far - near != 0 );
+}
+do {
+	mat4 result = void;
+	result.clear( 0 );
+
+
+	result.data[ 0 ][ 0 ] = 2 / ( right - left );
+	result.data[ 3 ][ 0 ] = - ( right + left ) / ( right - left );
+	result.data[ 1 ][ 1 ] = 2 / ( top - bottom );
+	result.data[ 3 ][ 1 ] = - ( top + bottom ) / ( top - bottom );
+	result.data[ 2 ][ 2 ] = - 2 / ( far - near );
+	result.data[ 3 ][ 2 ] = - ( far + near ) / ( far - near );
+	result.data[ 3 ][ 3 ] = 1;
+
+	return result;
+}
+*/
